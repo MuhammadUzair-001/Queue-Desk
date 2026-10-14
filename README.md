@@ -68,7 +68,7 @@ Long and unpredictable queues at hospitals, banks and government counters waste 
 | Member | GitHub | Contribution |
 |---|---|---|
 | Name            | GitHub Profile                                                   | Contribution                                      |
-|-----------------|------------------------------------------------------------------|---------------------------------------------------|
+
 | Sardar Ahmed Mustafa | [SARDARAHMEDMUSTAFA](https://github.com/SARDARAHMEDMUSTAFA) | Token management, queue workflow, and testing     |
 | Saqlain Abbas   | [Saqlain-Soc](https://github.com/Saqlain-Soc)                    | Queue estimation logic, analytics, and README     |
 | Muhammad Uzair  | [MuhammadUzair-001](https://github.com/MuhammadUzair-001)         | User interface, staff dashboard, and deployment   |
