@@ -56,8 +56,6 @@ Long and unpredictable queues at hospitals, banks and government counters waste 
 | Resource | Link |
 |---|---|
 | Application | `https://queue-desk.netlify.app/` |
-| Demo video | `<paste video link>` |
-| Presentation | `<paste PPT link>` |
 | Repository | `https://github.com/MuhammadUzair-001/Queue-Desk` |
 
 
@@ -69,8 +67,13 @@ Long and unpredictable queues at hospitals, banks and government counters waste 
 
 | Member | GitHub | Contribution |
 |---|---|---|
-| Saqlain Abbas | [Saqlain-Soc](https://github.com/Saqlain-Soc) | `<what you built, e.g. estimation logic, analytics, README>` |
-| Muhammad Uzair | [MuhammadUzair-001](https://github.com/MuhammadUzair-001) | `<what he built, e.g. UI, staff dashboard, deployment>` |
+| Name            | GitHub Profile                                                   | Contribution                                      |
+|-----------------|------------------------------------------------------------------|---------------------------------------------------|
+| Sardar Ahmed Mustafa | [SARDARAHMEDMUSTAFA](https://github.com/SARDARAHMEDMUSTAFA) | Token management, queue workflow, and testing     |
+| Saqlain Abbas   | [Saqlain-Soc](https://github.com/Saqlain-Soc)                    | Queue estimation logic, analytics, and README     |
+| Muhammad Uzair  | [MuhammadUzair-001](https://github.com/MuhammadUzair-001)         | User interface, staff dashboard, and deployment   |
+
+
 
 > Fill in the contribution column honestly. Judges may ask each member to explain their part.
 
