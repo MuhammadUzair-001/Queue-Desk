@@ -1,0 +1,1536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Queue Desk – Public Service Queue & Wait-Time Optimizer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+Arabic:wght@400;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#EBEFF2; --card:#FFFFFF; --ink:#12202B; --muted:#52636F; --line:#D5DDE3;
+  --amber:#FFB000; --board:#101C26; --board-ink:#FFB000; --board-dim:#7D8F9C;
+  --teal:#0E7C7B; --red:#C93A26; --blue:#2F5BD3; --chip:#E3EAEF; --field:#F6F8F9;
+  --shadow:0 1px 0 rgba(18,32,43,.06),0 10px 24px -14px rgba(18,32,43,.28);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1218; --card:#141F28; --ink:#E7EEF3; --muted:#9DAEBA; --line:#26343F;
+    --board:#070D12; --board-dim:#6F8391; --teal:#3CC1BE; --red:#FF7A63; --blue:#8AA9FF;
+    --chip:#1D2B35; --field:#0F1920; --shadow:0 1px 0 rgba(0,0,0,.4),0 10px 24px -14px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1218; --card:#141F28; --ink:#E7EEF3; --muted:#9DAEBA; --line:#26343F;
+  --board:#070D12; --board-dim:#6F8391; --teal:#3CC1BE; --red:#FF7A63; --blue:#8AA9FF;
+  --chip:#1D2B35; --field:#0F1920; --shadow:0 1px 0 rgba(0,0,0,.4),0 10px 24px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+/* high-contrast preference (set by the accessibility bar) */
+:root[data-contrast="high"]{
+  --bg:#FFFFFF; --card:#FFFFFF; --ink:#000000; --muted:#1A1A1A; --line:#000000; --chip:#EDEDED; --field:#FFFFFF;
+  --board:#000000; --board-ink:#FFD400; --board-dim:#E0E0E0; --amber:#FFD400;
+  --teal:#005F5E; --red:#A00000; --blue:#0033CC; --shadow:none; color-scheme:light;
+}
+:root[data-contrast="high"] .card,:root[data-contrast="high"] .kpi,:root[data-contrast="high"] .counter,
+:root[data-contrast="high"] .qlist li,:root[data-contrast="high"] .tk-grid div{border-width:2px}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 'Public Sans','Noto Sans Arabic',system-ui,-apple-system,'Segoe UI',sans-serif}
+h1,h2,h3,p{margin:0}
+button,select,input{font:inherit;color:inherit}
+.num{font-family:'Barlow Condensed','Noto Sans Arabic','Arial Narrow',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.muted{color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:0;background:var(--amber);color:#101C26;padding:10px 14px;z-index:100;font-weight:700;border-radius:0 0 8px 0}
+.skip:focus{left:0}
+[lang="ur"]{line-height:1.8}
+
+/* header */
+.top{background:var(--board);color:#E9EFF3;display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center;justify-content:space-between;padding:14px clamp(14px,3vw,32px)}
+.brand{display:flex;gap:12px;align-items:center}
+.brandmark{width:40px;height:40px;border-radius:9px;background:var(--amber);color:#101C26;display:grid;place-items:center;font:700 28px/1 'Barlow Condensed',sans-serif}
+.brand h1{font:700 24px/1.1 'Barlow Condensed',sans-serif;letter-spacing:.02em}
+.brand p{font-size:12.5px;color:#B3C1CC}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.controls select{background:#16242F;border:1px solid #2C3D4A;color:#E9EFF3;border-radius:8px;padding:8px 10px}
+.clock{font:700 34px/1 'Barlow Condensed',sans-serif;color:var(--amber);min-width:76px;text-align:center}
+.clock small{display:block;font:500 11px/1.2 'Public Sans',sans-serif;color:#B3C1CC;letter-spacing:0}
+.seg{display:inline-flex;border:1px solid #2C3D4A;border-radius:8px;overflow:hidden}
+.seg button{background:#16242F;border:0;color:#D5DFE7;padding:8px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--amber);color:#101C26;font-weight:700}
+.ghost{background:#16242F;border:1px solid #2C3D4A;color:#E9EFF3;border-radius:8px;padding:8px 12px;cursor:pointer}
+.ghost:hover{border-color:var(--amber)}
+
+/* accessibility bar */
+.a11y{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:8px clamp(14px,3vw,32px);background:var(--card);border-bottom:1px solid var(--line);font-size:13.5px}
+.a11y strong{font-weight:700}
+.a11y .grp{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;align-items:center}
+.a11y .grp>span{padding:0 10px;color:var(--muted)}
+.a11y button{background:var(--field);border:0;padding:6px 13px;cursor:pointer;font-weight:600;color:var(--ink)}
+.a11y .grp button{border-inline-start:1px solid var(--line)}
+.a11y .tog{border:1px solid var(--line);border-radius:8px}
+.a11y button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+/* tabs */
+.tabs{display:flex;gap:4px;padding:10px clamp(14px,3vw,32px) 0;border-bottom:1px solid var(--line);background:var(--bg);overflow-x:auto}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 16px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--amber)}
+main{padding:20px clamp(14px,3vw,32px) 48px;max-width:1280px;margin:0 auto}
+main:focus{outline:none}
+.tab[hidden]{display:none}
+.primary,.ghost,.tabs button,.seg button,.a11y button,input[type=text],input[type=tel],select{min-height:44px}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+.card h2{font-size:17px;font-weight:700;margin-bottom:4px}
+.card h3{font-size:15px;font-weight:700}
+.stack{display:grid;gap:16px;align-content:start}
+.cit-grid{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:16px}
+@media (max-width:860px){.cit-grid{grid-template-columns:1fr}}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.split{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}
+
+/* forms */
+label{display:block;font-size:13.5px;font-weight:600;margin-top:12px}
+label input[type=text],label input[type=tel],label select{display:block;width:100%;margin-top:4px;padding:10px 12px;background:var(--field);border:1px solid var(--line);border-radius:8px}
+label.check{display:flex;gap:10px;align-items:flex-start;font-weight:500}
+label.check input{margin-top:4px;width:18px;height:18px}
+.primary{background:var(--amber);color:#101C26;border:0;border-radius:9px;padding:13px 18px;font-weight:700;cursor:pointer;width:100%;margin-top:16px;font-size:16px}
+.primary:hover{filter:brightness(1.05)}
+.btn{background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:600;min-height:40px;color:var(--ink)}
+.btn:hover:not(:disabled){border-color:var(--teal)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.accent{background:var(--teal);border-color:var(--teal);color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.accent{color:#06201F}}
+:root[data-contrast="high"] .btn.accent{color:#fff}
+
+.est-now{margin-top:14px;padding:12px 14px;background:var(--field);border:1px solid var(--line);border-radius:10px;display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
+.est-now strong{font:700 34px/1 'Barlow Condensed','Noto Sans Arabic',sans-serif;grid-row:1/3;grid-column:2}
+.est-now small{color:var(--muted)}
+
+/* ticket */
+.ticket{background:var(--board);color:var(--board-ink);padding:18px 20px 16px;text-align:center;border-radius:6px;
+  -webkit-mask:radial-gradient(circle 11px at 0 50%,#0000 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 11px at 100% 50%,#0000 97%,#000) right/51% 100% no-repeat;
+  mask:radial-gradient(circle 11px at 0 50%,#0000 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 11px at 100% 50%,#0000 97%,#000) right/51% 100% no-repeat}
+.ticket .lbl{font:700 78px/1 'Barlow Condensed',sans-serif;letter-spacing:.04em;direction:ltr}
+.ticket .sub{color:var(--board-dim);font-size:13px;margin-top:4px}
+.status-pill{display:inline-block;margin:14px 0 4px;padding:6px 14px;border-radius:99px;font-weight:700;font-size:14.5px;background:var(--chip)}
+.status-pill.wait{background:rgba(47,91,211,.14);color:var(--blue)}
+.status-pill.go{background:var(--amber);color:#101C26}
+.status-pill.ok{background:rgba(14,124,123,.16);color:var(--teal)}
+.status-pill.bad{background:rgba(201,58,38,.14);color:var(--red)}
+.tk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.tk-grid div{background:var(--field);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.tk-grid b{display:block;font:700 28px/1.2 'Barlow Condensed','Noto Sans Arabic',sans-serif}
+.tk-grid span{font-size:12px;color:var(--muted)}
+.bar{height:8px;border-radius:99px;background:var(--chip);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--teal);transition:width .3s}
+.steps{list-style:none;display:grid;grid-template-columns:repeat(4,1fr);margin:16px 0 8px;padding:0}
+.steps li{position:relative;text-align:center;font-size:12.5px;color:var(--muted)}
+.steps li::before{content:"";position:absolute;top:15px;inset-inline-start:-50%;width:100%;height:3px;background:var(--line)}
+.steps li:first-child::before{display:none}
+.steps .dot{position:relative;z-index:1;display:grid;place-items:center;width:32px;height:32px;margin:0 auto 4px;border-radius:50%;background:var(--card);border:3px solid var(--line);font-weight:700;color:var(--muted)}
+.steps li.done .dot{background:var(--teal);border-color:var(--teal);color:#fff}
+.steps li.done::before,.steps li.now::before,.steps li.fail::before{background:var(--teal)}
+.steps li.now .dot{background:var(--amber);border-color:var(--amber);color:#101C26}
+.steps li.now .lab{color:var(--ink);font-weight:700}
+.steps li.fail .dot{background:var(--red);border-color:var(--red);color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .steps li.done .dot{color:#06201F}}
+
+/* board */
+.board{background:var(--board);color:#E9EFF3;border-color:#1D2C37}
+.board h2{color:#E9EFF3}
+.board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-top:12px}
+.slot{border:1px solid #243543;border-radius:10px;padding:10px 12px;background:#0C1620}
+.slot span{font-size:12px;color:var(--board-dim)}
+.slot b{display:block;font:700 40px/1 'Barlow Condensed','Noto Sans Arabic',sans-serif;color:var(--board-ink);margin-top:2px}
+.slot.off b{color:#6B7C89;font-size:26px;padding:7px 0}
+.slot.free b{color:#6FD0CD;font-size:26px;padding:7px 0}
+.slot.mine{outline:2px solid var(--amber)}
+
+/* lists */
+.qlist{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.qlist li{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--field)}
+.qlist li.mine{border-color:var(--amber);background:rgba(255,176,0,.12)}
+.qlist .tkn{font:700 24px/1 'Barlow Condensed',sans-serif;direction:ltr}
+.tag{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(14,124,123,.16);color:var(--teal)}
+.tag.you{background:var(--amber);color:#101C26}
+.msg{display:grid;gap:8px;margin-top:10px;max-height:260px;overflow:auto}
+.msg div{border-inline-start:3px solid var(--blue);padding:4px 10px;background:var(--field);border-radius:8px;font-size:13.5px}
+.msg div.called{border-color:var(--amber)} .msg div.near{border-color:var(--teal)} .msg div.delay{border-color:var(--red)}
+.msg small{color:var(--muted);display:block}
+.qr{width:150px;height:150px;background:#fff;padding:8px;border-radius:8px;flex:none}
+.qr svg{width:100%;height:100%;display:block}
+[hidden]{display:none!important}
+.btn.link{display:inline-block;text-decoration:none;margin-top:10px}
+.mics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.mic{display:flex;gap:8px;align-items:center;justify-content:center;background:var(--amber);color:#101C26;border:0;border-radius:12px;padding:14px 10px;font-weight:700;font-size:16px;cursor:pointer;min-height:56px}
+.mic:hover{filter:brightness(1.05)}
+.mic[aria-pressed="true"]{background:var(--red);color:#fff}
+.vstatus{min-height:22px;margin:10px 0 0;font-weight:600;color:var(--muted)}
+.vchat{display:grid;gap:8px;margin-top:6px;max-height:300px;overflow:auto}
+.vb{padding:8px 12px;border-radius:12px;max-width:92%;font-size:14.5px}
+.vb.bot{background:var(--chip);justify-self:start}
+.vb.me{background:var(--teal);color:var(--card);justify-self:end}
+.vb.sys{border:1px dashed var(--line);color:var(--muted);justify-self:center;font-size:13px;text-align:center}
+.inline .btn{flex:none;align-self:flex-end}
+.rate{display:flex;gap:8px;margin-top:8px}
+.rate button{flex:1;font-size:26px;background:var(--field);border:1px solid var(--line);border-radius:10px;cursor:pointer;min-height:48px}
+.rate button:hover{border-color:var(--teal)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.chip-btn{font:700 20px/1 'Barlow Condensed',sans-serif;background:var(--chip);border:1px solid var(--line);border-radius:99px;padding:8px 16px;cursor:pointer;min-height:40px;color:var(--ink);direction:ltr}
+.chip-btn:hover{border-color:var(--teal)}
+.err{margin-top:10px;padding:10px 12px;border-radius:9px;background:rgba(201,58,38,.12);color:var(--red);font-weight:600}
+.inline{display:flex;gap:8px;align-items:flex-end}
+.inline label{flex:1;margin-top:12px}
+.inline .primary{width:auto;margin-top:0;padding:10px 20px;flex:none}
+
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.kpi span{font-size:13px;color:var(--muted);display:block}
+.kpi b{font:700 40px/1.05 'Barlow Condensed',sans-serif;display:block;margin:2px 0}
+.kpi small{color:var(--muted);font-size:12.5px}
+.kpi.warn b{color:var(--red)}
+.kpi.good b{color:var(--teal)}
+
+.staff-grid{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-top:16px}
+@media (max-width:980px){.staff-grid{grid-template-columns:1fr}}
+.counters{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:12px}
+.counter{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--card);display:grid;gap:8px}
+.counter.closed{opacity:.7;background:var(--field)}
+.c-head{display:flex;justify-content:space-between;align-items:center}
+.chip{font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--chip)}
+.chip.busy{background:var(--amber);color:#101C26}
+.chip.free{background:rgba(14,124,123,.16);color:var(--teal)}
+.c-board{background:var(--board);border-radius:8px;padding:8px 12px;color:var(--board-ink);display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-height:58px}
+.c-tok{font:700 36px/1 'Barlow Condensed',sans-serif}
+.c-sub{font-size:12px;color:var(--board-dim);text-align:end}
+.c-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.c-actions .btn{padding:7px 8px;font-size:13px}
+.c-meta{font-size:12px;color:var(--muted)}
+.slider-row{display:flex;gap:14px;align-items:center;margin-top:10px}
+input[type=range]{flex:1;accent-color:var(--teal);min-height:32px}
+.slider-row output{font:700 30px/1 'Barlow Condensed',sans-serif;min-width:90px;text-align:end}
+.whatif{display:grid;gap:8px;margin-top:10px}
+.whatif div{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--field);border:1px solid var(--line);border-radius:9px}
+.whatif b{font:700 22px/1 'Barlow Condensed',sans-serif}
+.arrow{color:var(--muted);padding:0 6px}
+.better{color:var(--teal)}
+.events{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px;max-height:300px;overflow:auto}
+.events li{font-size:13.5px;padding:6px 10px;border-left:3px solid var(--teal);background:var(--field);border-radius:0 8px 8px 0}
+.events li.demand{border-color:var(--amber)}
+.events li small{color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th,td{text-align:start;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted)}
+.chart-wrap{margin-top:8px;overflow-x:auto}
+svg.chart{width:100%;min-width:460px;height:auto;display:block}
+.chart text{fill:var(--muted);font-size:11px;font-family:'Public Sans',sans-serif}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .ln{fill:none;stroke-width:2.4;stroke-linejoin:round}
+.chart .tgt{stroke:var(--red);stroke-dasharray:5 4;stroke-width:1.3}
+.chart .evt{stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2 3}
+.util{display:grid;gap:8px;margin-top:10px}
+.util div{display:grid;grid-template-columns:86px 1fr 120px;gap:10px;align-items:center;font-size:13.5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:12px}
+.persona h3{font-size:16px}
+.persona p{margin-top:6px;font-size:14px}
+.persona .need{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:13.5px}
+.hci-list{margin:8px 0 0;padding-inline-start:20px;display:grid;gap:4px;font-size:14px}
+#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;display:grid;gap:8px;width:min(440px,92vw)}
+.toast{background:var(--board);color:#F1F5F8;border-inline-start:5px solid var(--amber);border-radius:10px;padding:12px 14px;box-shadow:0 12px 30px -10px rgba(0,0,0,.6);font-size:14px}
+.toast b{display:block;color:var(--amber)}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+h2.sect{font-size:20px;margin:22px 0 4px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main" data-i18n="skip">Skip to main content</a>
+<header class="top">
+  <div class="brand">
+    <div class="brandmark" aria-hidden="true">Q</div>
+    <div><h1>Queue Desk</h1><p>Public service queue and wait-time optimizer</p></div>
+  </div>
+  <div class="controls">
+    <label class="sr" for="venue">Service location</label>
+    <select id="venue">
+      <option value="hospital">City Hospital – outpatient desk</option>
+      <option value="bank">Bank branch – teller counters</option>
+      <option value="gov">Passport and ID office</option>
+    </select>
+    <div class="clock num" id="clock">09:00<small>simulated time</small></div>
+    <div class="seg" role="group" aria-label="Simulation speed">
+      <button data-speed="1" aria-pressed="true">1×</button>
+      <button data-speed="3" aria-pressed="false">3×</button>
+      <button data-speed="8" aria-pressed="false">8×</button>
+    </div>
+    <button class="ghost" id="pause">Pause</button>
+    <button class="ghost" id="reset">Reset</button>
+  </div>
+</header>
+
+<div class="a11y" role="toolbar" aria-label="Accessibility and language">
+  <strong data-i18n="a11y_lbl">Accessibility</strong>
+  <div class="grp" role="group" aria-label="Text size">
+    <span data-i18n="a11y_text">Text size</span>
+    <button data-zoom="1" aria-pressed="true" aria-label="Normal text">A</button>
+    <button data-zoom="1.2" aria-pressed="false" aria-label="Large text">A+</button>
+    <button data-zoom="1.45" aria-pressed="false" aria-label="Extra large text">A++</button>
+  </div>
+  <button class="tog" id="btnContrast" aria-pressed="false" data-i18n="a11y_contrast">High contrast</button>
+  <button class="tog" id="btnVoice" aria-pressed="false" data-i18n="a11y_voice">Voice alerts</button>
+  <div class="grp" role="group" aria-label="Language">
+    <span data-i18n="a11y_lang">Language</span>
+    <button data-lang="en" aria-pressed="true" lang="en">English</button>
+    <button data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
+  </div>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="Views" id="tablist">
+  <button role="tab" data-tab="citizen" aria-selected="true" data-i18n="tab_citizen">Get token</button>
+  <button role="tab" data-tab="track" aria-selected="false" data-i18n="tab_track">Track token</button>
+  <button role="tab" data-tab="staff" aria-selected="false" data-i18n="tab_staff">Staff dashboard</button>
+  <button role="tab" data-tab="analytics" aria-selected="false" data-i18n="tab_analytics">Analytics</button>
+  <button role="tab" data-tab="hci" aria-selected="false" data-i18n="tab_hci">Design and usability</button>
+</nav>
+
+<main id="main" tabindex="-1">
+<!-- ============ GET TOKEN ============ -->
+<section id="tab-citizen" class="tab">
+  <div class="cit-grid">
+    <div class="stack">
+      <article class="card" id="voiceCard">
+        <h2 data-i18n="vo_title">Register by voice</h2>
+        <p class="muted" data-i18n="vo_intro"></p>
+        <div class="mics">
+          <button class="mic" id="micUr" lang="ur" aria-pressed="false"><span aria-hidden="true">🎤</span><span>اردو میں بولیں</span></button>
+          <button class="mic" id="micEn" lang="en" aria-pressed="false"><span aria-hidden="true">🎤</span><span>Speak English</span></button>
+        </div>
+        <p class="vstatus" id="voStatus" role="status"></p>
+        <div class="vchat" id="voChat" aria-live="polite"></div>
+        <div class="inline">
+          <label for="voIn"><span data-i18n="vo_type">Or type your answer</span><input type="text" id="voIn" autocomplete="off"></label>
+          <button class="btn" id="voSend" data-i18n="vo_send">Send</button>
+        </div>
+        <button class="btn" id="voStop" hidden data-i18n="vo_stop" style="margin-top:10px">Stop</button>
+      </article>
+      <article class="card" id="myCard">
+        <div id="noToken">
+          <h2 data-i18n="get_title">Get a digital token</h2>
+          <p class="muted" data-i18n="get_intro"></p>
+          <div class="est-now">
+            <span data-i18n="wait_join">Wait if you join now</span><strong id="newWait">–</strong>
+            <small id="newMeta"></small>
+          </div>
+          <label for="inName"><span data-i18n="name_lbl">Name</span><input type="text" id="inName" autocomplete="name"></label>
+          <label for="inPhone"><span data-i18n="phone_lbl">Mobile number</span><input type="tel" id="inPhone" autocomplete="tel" dir="ltr" placeholder="0300 1234567"></label>
+          <p class="err" id="phoneErr" role="alert" hidden></p>
+          <label for="inAhead"><span data-i18n="alert_when">Alert me when</span>
+            <select id="inAhead"><option value="1" data-i18n="ahead_1"></option><option value="3" selected data-i18n="ahead_3"></option><option value="5" data-i18n="ahead_5"></option></select>
+          </label>
+          <label for="inAlertMin"><span data-i18n="alert_also">Also alert me when</span>
+            <select id="inAlertMin"><option value="10" data-i18n="al_10"></option><option value="15" selected data-i18n="al_15"></option><option value="20" data-i18n="al_20"></option></select>
+          </label>
+          <label class="check"><input type="checkbox" id="inPrio"><span data-i18n="prio">Priority lane</span></label>
+          <button class="primary" id="getToken" data-i18n="get_btn">Get my token</button>
+        </div>
+        <div id="hasToken" hidden>
+          <div id="tkPanel"></div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn" id="speakBtn" data-i18n="read_aloud">Read status aloud</button>
+          </div>
+          <div id="rateBox" hidden>
+            <p style="margin-top:14px;font-weight:600" id="rateAsk" data-i18n="rate_q"></p>
+            <div class="rate" id="rateBtns">
+              <button data-r="1" data-i18n-aria="rate_1" aria-label="Very difficult">😞</button>
+              <button data-r="2" data-i18n-aria="rate_2" aria-label="Difficult">😕</button>
+              <button data-r="3" data-i18n-aria="rate_3" aria-label="Okay">😐</button>
+              <button data-r="4" data-i18n-aria="rate_4" aria-label="Easy">🙂</button>
+              <button data-r="5" data-i18n-aria="rate_5" aria-label="Very easy">😄</button>
+            </div>
+            <p id="rateThanks" class="note" hidden data-i18n="rate_thanks"></p>
+          </div>
+          <button class="primary" id="newTokenBtn" hidden data-i18n="new_token">Get a new token</button>
+        </div>
+      </article>
+      <article class="card">
+        <div class="row" style="flex-wrap:nowrap;align-items:flex-start">
+          <div class="qr" id="qr" aria-label="QR code that opens this token page"></div>
+          <div>
+            <h2 data-i18n="qr_title">Scan at the entrance</h2>
+            <p class="muted" data-i18n="qr_text"></p>
+          </div>
+        </div>
+      </article>
+    </div>
+    <div class="stack">
+      <article class="card board">
+        <div class="split"><h2 data-i18n="board_title">Now serving</h2><span id="boardMeta" style="color:var(--board-dim)"></span></div>
+        <div class="board-grid" id="boardGrid"></div>
+      </article>
+      <article class="card">
+        <div class="split"><h2 data-i18n="queue_title">Waiting in line</h2><span class="muted" id="qMeta"></span></div>
+        <ul class="qlist" id="qList"></ul>
+      </article>
+      <article class="card">
+        <div class="split"><h2 data-i18n="alerts_title">Your alerts</h2><button class="btn" id="permBtn" data-i18n="perm">Allow browser notifications</button></div>
+        <p class="note" style="margin-top:4px" data-i18n="alerts_note"></p>
+        <div class="msg" id="msgLog"></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRACK TOKEN ============ -->
+<section id="tab-track" class="tab" hidden>
+  <div class="cit-grid">
+    <div class="stack">
+      <article class="card">
+        <h2 data-i18n="track_title">Track a token</h2>
+        <p class="muted" data-i18n="track_intro"></p>
+        <div class="inline">
+          <label for="trIn"><span data-i18n="track_lbl">Token number</span><input type="text" id="trIn" dir="ltr" autocomplete="off" autocapitalize="characters" placeholder="A031"></label>
+          <button class="primary" id="trBtn" data-i18n="track_btn">Track</button>
+        </div>
+        <div class="chips" id="trTryWrap"><span class="muted" data-i18n="track_try">Try one of these:</span>
+          <button class="chip-btn" id="trTry0"></button><button class="chip-btn" id="trTry1"></button><button class="chip-btn" id="trTry2"></button>
+        </div>
+        <p class="err" id="trErr" role="alert" hidden></p>
+      </article>
+      <article class="card" id="trResult" hidden>
+        <div id="trPanel"></div>
+        <button class="primary" id="trFollow"></button>
+      </article>
+    </div>
+    <div class="stack">
+      <article class="card board">
+        <div class="split"><h2 data-i18n="board_title">Now serving</h2><span id="boardMeta2" style="color:var(--board-dim)"></span></div>
+        <div class="board-grid" id="boardGrid2"></div>
+      </article>
+      <article class="card">
+        <h2 data-i18n="track_how">How tracking works</h2>
+        <p class="muted" data-i18n="track_how_text"></p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STAFF ============ -->
+<section id="tab-staff" class="tab" hidden>
+  <div class="kpis" id="staffKpis"></div>
+  <div class="staff-grid">
+    <div class="stack">
+      <article class="card">
+        <div class="split"><h2>Counters</h2>
+          <label class="check" style="margin:0"><input type="checkbox" id="autoMode" checked><span>Simulated staff (auto-call and auto-complete)</span></label>
+        </div>
+        <p class="note" style="margin-top:2px">Open or close counters and watch the estimated wait change. Turn simulated staff off to call and complete tokens yourself.</p>
+        <div class="counters" id="counters"></div>
+      </article>
+      <article class="card">
+        <div class="split"><h2>Waiting tokens</h2><span class="muted" id="staffQMeta"></span></div>
+        <div style="overflow-x:auto"><table><thead><tr><th>Token</th><th>Lane</th><th>Waiting for</th><th>Estimated wait</th></tr></thead><tbody id="staffQ"></tbody></table></div>
+      </article>
+    </div>
+    <div class="stack">
+      <article class="card">
+        <h2>Demand</h2>
+        <p class="muted">Simulated customer arrivals per hour.</p>
+        <div class="slider-row"><input type="range" id="lambda" min="4" max="140" step="2" aria-label="Arrivals per hour"><output class="num" id="lambdaOut" for="lambda"></output></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="rush">Rush hour (×2.5)</button>
+          <button class="btn" id="calm">Back to normal</button>
+        </div>
+      </article>
+      <article class="card">
+        <h2>Suggested staffing</h2>
+        <p id="recText" class="muted"></p>
+        <button class="btn accent" id="applyRec" style="margin-top:10px">Apply suggestion</button>
+        <div class="whatif" id="whatif"></div>
+      </article>
+      <article class="card">
+        <h2>What changed</h2>
+        <ul class="events" id="eventLog"><li class="muted">Open or close a counter, or change demand.</li></ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ANALYTICS ============ -->
+<section id="tab-analytics" class="tab" hidden>
+  <div class="kpis" id="anKpis"></div>
+  <div class="two">
+    <article class="card">
+      <h2>Queue length</h2>
+      <p class="muted">People waiting, last 2 simulated hours. Dotted lines mark staffing or demand changes.</p>
+      <div class="chart-wrap" id="chartQ"></div>
+    </article>
+    <article class="card">
+      <h2>Estimated wait for a new arrival</h2>
+      <p class="muted">Minutes. The dashed line is this location's target.</p>
+      <div class="chart-wrap" id="chartW"></div>
+    </article>
+  </div>
+  <div class="two">
+    <article class="card"><h2>Counter workload</h2><p class="muted">Share of open time spent serving, and customers served.</p><div class="util" id="utilBars"></div></article>
+    <article class="card">
+      <h2>How the estimate works</h2>
+      <p class="muted">Each estimate replays the line against the open counters: every counter has a time when it frees up (remaining time for the current customer, using the average service time learned from completed tokens). Waiting tokens are assigned in order, priority first, to whichever counter frees up first. A queueing-theory check (Erlang C, M/M/c) compares this to the predicted average wait and suggests how many counters to staff, using a short-term forecast of arrivals.</p>
+      <p class="note" id="accNote"></p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ DESIGN AND USABILITY ============ -->
+<section id="tab-hci" class="tab" hidden>
+  <article class="card">
+    <h2>Designing for the person in the queue</h2>
+    <p class="muted">Queue Desk is built around human-computer interaction (HCI) principles: the people using it are stressed, often in a hurry, and range from first-time smartphone users to experienced counter staff. The interface is meant to be understood at a glance, usable without training, and accessible to people with different abilities and languages.</p>
+  </article>
+
+  <h2 class="sect">Who it is for</h2>
+  <div class="three">
+    <article class="card persona"><h3>Rukhsana, 68, retired teacher</h3><p>Visits the hospital outpatient desk. Uses a basic smartphone, prefers Urdu, and finds small text hard to read.</p>
+      <p class="need"><b>Design response:</b> QR code so she never types a web address, Urdu layout, text size up to 145%, voice read-aloud, a priority lane, and one big button per screen.</p></article>
+    <article class="card persona"><h3>Bilal, 24, university student</h3><p>Renewing an ID card between classes. Wants to leave the building and come back at the right time.</p>
+      <p class="need"><b>Design response:</b> honest wait estimate, alerts when a set number of people are ahead, a warning when the estimate changes by 10 minutes or more, and tracking by token number from any phone.</p></article>
+    <article class="card persona"><h3>Sana, 35, counter operator</h3><p>Handles a constant flow of people and has no time to read manuals. Needs to trust the numbers.</p>
+      <p class="need"><b>Design response:</b> one dashboard for demand, counters and queue, a staffing suggestion with the reason, a what-if preview, and a log of what changed and its effect.</p></article>
+  </div>
+
+  <h2 class="sect">Usability heuristics applied</h2>
+  <article class="card">
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Heuristic (Nielsen)</th><th>How Queue Desk applies it</th></tr></thead>
+      <tbody>
+        <tr><td>Visibility of system status</td><td>A four-step progress tracker, live place in line and estimated wait, the shared "Now serving" board, and screen-reader announcements when status changes.</td></tr>
+        <tr><td>Match with the real world</td><td>A paper-ticket look, plain wording such as "people ahead", and waits shown in minutes rather than queueing-theory terms. Full Urdu layout, right to left.</td></tr>
+        <tr><td>User control and freedom</td><td>No account needed. Staff can cancel a counter closing with "Keep open", switch to manual mode, or pause the simulation. Citizens can take a new token after a skip.</td></tr>
+        <tr><td>Consistency and standards</td><td>Status always uses the same words, icon and colour across the token page, tracker and board. "Token" and "counter" mean the same thing everywhere.</td></tr>
+        <tr><td>Error prevention</td><td>Buttons are disabled when an action is not possible (call next with an empty queue, apply a suggestion that matches current staffing). Token search forgives case, spaces and missing zeros.</td></tr>
+        <tr><td>Recognition rather than recall</td><td>Quick-pick token chips, a QR code instead of a typed address, and the ticket always shows what you need to know.</td></tr>
+        <tr><td>Flexibility and efficiency</td><td>Walk-up QR for new users, the Enter key to track, and a one-click staffing suggestion for experienced staff.</td></tr>
+        <tr><td>Minimalist design</td><td>One primary action per screen. Staff tools sit on a separate screen so citizens never see them.</td></tr>
+        <tr><td>Recover from errors</td><td>If a token is not found, the message says what to check on the ticket. A skipped token explains why and offers a new one.</td></tr>
+        <tr><td>Help and documentation</td><td>Short explanations next to controls, and a "How the estimate works" panel for staff and judges.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <div class="two">
+    <article class="card">
+      <h2>Accessibility features</h2>
+      <ul class="hci-list">
+        <li>Text size up to 145% and a high-contrast mode, saved for the next visit.</li>
+        <li>Status never relies on colour alone: every state has an icon and a word.</li>
+        <li>Everything works from the keyboard, with a visible focus ring and a skip link.</li>
+        <li>Screen-reader announcements for status changes, and labelled controls.</li>
+        <li>Voice alerts and "Read status aloud" using the browser's speech engine. Voice availability varies by device, and an Urdu voice may not be installed.</li>
+        <li>Touch targets of at least 44 px, and animation is switched off for people who prefer reduced motion.</li>
+        <li>Urdu and English for the citizen screens, with right-to-left layout.</li>
+        <li>A voice assistant that registers a token by conversation in Urdu or English, with a typing box as a fallback for people who cannot or would rather not speak.</li>
+      </ul>
+      <p class="note">The design aims at WCAG 2.2 AA. It has not had a formal audit, so treat this as a design intent to verify with testing.</p>
+    </article>
+    <article class="card">
+      <h2>Usability test plan</h2>
+      <ul class="hci-list">
+        <li><b>Participants:</b> 5 to 8 people, including at least two older adults and two non-English readers.</li>
+        <li><b>Task 1:</b> get a token and say how long you expect to wait.</li>
+        <li><b>Task 2:</b> close the app, then find where your token is using only the number on the ticket.</li>
+        <li><b>Task 3:</b> respond to the "turn approaching" alert.</li>
+        <li><b>Task 4 (staff):</b> bring the wait under target during a rush.</li>
+        <li><b>Measure:</b> task completion, time on task, errors, a 1 to 5 ease rating, and the System Usability Scale (SUS) questionnaire.</li>
+      </ul>
+      <p class="note">No tests with real users have been run yet. The panel below records what is measured in this browser session, so it can be used during a test.</p>
+    </article>
+  </div>
+  <h2 class="sect">Measured in this session</h2>
+  <div class="kpis" id="hciLive"></div>
+</section>
+</main>
+<div id="srLive" class="sr" aria-live="polite" aria-atomic="true"></div>
+<div id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+const fmt = m => { if (m == null || !isFinite(m)) return '–'; if (m < 1) return '<1 min'; m = Math.round(m); if (m < 60) return m + ' min'; return Math.floor(m/60) + 'h ' + String(m%60).padStart(2,'0') + 'm'; };
+const clockStr = t => { const m = Math.floor(9*60 + t); return String(Math.floor(m/60)%24).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
+const ord = n => { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); };
+
+/* ---------- preferences, language ---------- */
+const prefs = { zoom: 1, contrast: false, voice: false, lang: 'en' };
+try { Object.assign(prefs, JSON.parse(localStorage.getItem('qd-prefs') || '{}')); } catch (e) {}
+const savePrefs = () => { try { localStorage.setItem('qd-prefs', JSON.stringify(prefs)); } catch (e) {} };
+let lang = prefs.lang === 'ur' ? 'ur' : 'en';
+
+const L = {
+en: {
+  alert_also:'Also alert me when', al_10:'about 10 minutes are left', al_15:'about 15 minutes are left', al_20:'about 20 minutes are left',
+  vo_title:'Register by voice', vo_intro:'Tap a microphone and say, for example, "I want to register a token" or "Mujhe token register karna hai". I will ask for your name and mobile number, register your token, and read the details back to you.',
+  vo_type:'Or type your answer', vo_send:'Send', vo_stop:'Stop', vo_listening:'Listening… speak now', vo_speaking:'Speaking…',
+  vo_unsupported:'Voice input is not supported in this browser. Use Chrome or Edge, or type your answers below.',
+  vo_blocked:'The microphone is blocked here. Allow microphone access, or type your answers below.',
+  vo_nospeech:'I did not hear anything. Tap the microphone to try again, or type below.',
+  vo_novoice:'No Urdu voice is installed on this device, so replies are read aloud in Roman Urdu.',
+
+  phone_bad:'Enter a valid mobile number, for example 0300 1234567.',
+  skip:'Skip to main content', a11y_lbl:'Accessibility', a11y_text:'Text size', a11y_contrast:'High contrast', a11y_voice:'Voice alerts', a11y_lang:'Language',
+  tab_citizen:'Get token', tab_track:'Track token', tab_staff:'Staff dashboard', tab_analytics:'Analytics', tab_hci:'Design and usability',
+  get_title:'Get a digital token', get_intro:"Skip the standing line. Take a token, go about your day, and we'll alert you when it's nearly your turn.",
+  wait_join:'Wait if you join now', no_counter:'No counter is open right now.', meta_waiting:'{q} waiting, {c} counters open',
+  name_lbl:'Name', phone_lbl:'Mobile number', alert_when:'Alert me when',
+  ahead_1:'1 person is ahead', ahead_3:'3 people are ahead', ahead_5:'5 people are ahead',
+  prio:'Priority lane: senior citizen, person with a disability, or emergency', prio_short:'priority lane', get_btn:'Get my token',
+  st_issued:'Token issued', st_inline:'In line', st_called:'Called', st_served:'Served', st_skipped:'Skipped',
+  pos:'Your place in line', ahead:'People ahead', eta:'Estimated wait', now:'Now',
+  waiting:'Waiting', goto:'Go to Counter {n}', complete:'Visit complete', skipped_pill:'Token skipped', issued_at:'issued {t}',
+  note_wait:"Expected turn around {t}. We'll alert you when {n} people are ahead.", note_wait_other:'Expected turn around {t}.',
+  note_nocounter:'No counter is open at the moment. Your place is held and the estimate will appear when one opens.',
+  note_called:'Called at {t}. Please go to the counter.', note_done:'You waited {w}. At check-in we estimated {e}.',
+  note_skip:'The counter skipped this token because you did not arrive. Take a new token to rejoin.',
+  say_wait:'Token {l}. You are number {p} in line, with {a} people ahead. Estimated wait: {w}.', say_go:'Token {l}. Please go to counter {c} now.',
+  new_token:'Get a new token', read_aloud:'Read status aloud',
+  rate_q:'How easy was this?', rate_thanks:'Thank you. Your rating helps us improve.',
+  rate_1:'Very difficult', rate_2:'Difficult', rate_3:'Okay', rate_4:'Easy', rate_5:'Very easy',
+  qr_title:'Scan at the entrance', qr_text:'Print this code at the door. Visitors scan it with their phone to open this page and take a token, with no app to install.',
+  board_title:'Now serving', board_meta:'{o} of {n} counters open', closed:'Closed', free:'Free', counter:'Counter', closing:'closing',
+  queue_title:'Waiting in line', in_line:'{n} in line', you:'You', priority:'Priority', more:'+ {n} more', nobody:'Nobody is waiting.',
+  alerts_title:'Your alerts', perm:'Allow browser notifications',
+  alerts_note:'Alerts appear on screen and play a short tone. Turn on voice alerts above to hear them, or allow browser notifications to get a pop-up even when this tab is in the background.',
+  alerts_empty:'Alerts for your token will show up here.', ch_app:'In app',
+  n_issued_t:'Token {l} issued', n_issued_b:'You are {p} in line. Estimated wait: {w}.',
+  n_near_t:'Your turn is approaching', n_near_b:'{l}: {a} ahead of you, about {w} to go. Please head to the service area.',
+  n_called_t:'Go to Counter {c}', n_called_b:'{l} is being called now.',
+  n_up_t:'Wait time has increased', n_up_b:'{l}: your estimated wait is now {w} (was {o}).',
+  n_down_t:'Wait time has dropped', n_down_b:'{l}: your estimated wait is now {w} (was {o}).',
+  n_skip_t:'Token skipped', n_skip_b:'{l} was skipped by the counter. Get a new token to rejoin the line.',
+  perm_ok:'Enabled. You will get a pop-up when your turn is near.', perm_no:'Not enabled. You will still see on-screen alerts.',
+  track_title:'Track a token', track_intro:"Enter a token number to see where it is in line. You don't need to sign in.",
+  track_lbl:'Token number', track_btn:'Track', track_try:'Try one of these:',
+  track_none:"We couldn't find token {l}. Check the letter and number on your ticket.",
+  track_follow:'Alert me for this token', track_mine:'You are following this token', follow_ok:'Following token {l}. We will alert you as it gets closer.',
+  track_how:'How tracking works', track_how_text:'Every token has a number printed on the ticket and shown on the token page. Anyone with the number can check its place in line and estimated wait, without signing in. Names and phone numbers are never shown here. In a live system each ticket would also carry a QR code that opens this page directly.'
+},
+ur: {
+  alert_also:'اس کے علاوہ مجھے اطلاع دیں جب', al_10:'تقریباً 10 منٹ باقی ہوں', al_15:'تقریباً 15 منٹ باقی ہوں', al_20:'تقریباً 20 منٹ باقی ہوں',
+  vo_title:'آواز سے رجسٹر کریں', vo_intro:'مائیک دبائیں اور کہیں، مثلاً "مجھے ٹوکن رجسٹر کرنا ہے"۔ میں آپ کا نام اور موبائل نمبر پوچھوں گا، ٹوکن رجسٹر کروں گا اور تفصیل سنا دوں گا۔',
+  vo_type:'یا اپنا جواب لکھیں', vo_send:'بھیجیں', vo_stop:'روکیں', vo_listening:'سن رہا ہوں… اب بولیں', vo_speaking:'بول رہا ہوں…',
+  vo_unsupported:'اس براؤزر میں آواز سے ان پٹ کی سہولت موجود نہیں۔ کروم یا ایج استعمال کریں، یا نیچے جواب لکھیں۔',
+  vo_blocked:'یہاں مائیک بلاک ہے۔ مائیک کی اجازت دیں، یا نیچے جواب لکھیں۔',
+  vo_nospeech:'کچھ سنائی نہیں دیا۔ دوبارہ کوشش کے لیے مائیک دبائیں، یا نیچے لکھیں۔',
+  vo_novoice:'اس ڈیوائس پر اردو آواز انسٹال نہیں، اس لیے جوابات رومن اردو میں پڑھے جا رہے ہیں۔',
+
+  phone_bad:'درست موبائل نمبر درج کریں، مثلاً 0300 1234567۔',
+  skip:'مرکزی مواد پر جائیں', a11y_lbl:'رسائی', a11y_text:'متن کا سائز', a11y_contrast:'زیادہ کنٹراسٹ', a11y_voice:'آواز والے الرٹ', a11y_lang:'زبان',
+  tab_citizen:'ٹوکن لیں', tab_track:'ٹوکن ٹریک کریں', tab_staff:'اسٹاف ڈیش بورڈ', tab_analytics:'تجزیات', tab_hci:'ڈیزائن اور استعمال پذیری',
+  get_title:'ڈیجیٹل ٹوکن حاصل کریں', get_intro:'قطار میں کھڑے ہونے کی ضرورت نہیں۔ ٹوکن لیں، اپنا کام کریں، اور باری قریب آنے پر ہم آپ کو اطلاع دیں گے۔',
+  wait_join:'ابھی شامل ہوں تو انتظار', no_counter:'اس وقت کوئی کاؤنٹر کھلا نہیں ہے۔', meta_waiting:'{q} انتظار میں، {c} کاؤنٹر کھلے ہیں',
+  name_lbl:'نام (اختیاری)', phone_lbl:'موبائل نمبر (اختیاری)', alert_when:'مجھے اطلاع دیں جب',
+  ahead_1:'1 شخص آگے ہو', ahead_3:'3 افراد آگے ہوں', ahead_5:'5 افراد آگے ہوں',
+  prio:'ترجیحی لین: بزرگ شہری، معذور فرد، یا ہنگامی صورتِ حال', prio_short:'ترجیحی لین', get_btn:'میرا ٹوکن حاصل کریں',
+  st_issued:'ٹوکن جاری', st_inline:'قطار میں', st_called:'طلب کیا گیا', st_served:'مکمل', st_skipped:'نظرانداز',
+  pos:'قطار میں آپ کا نمبر', ahead:'آگے موجود افراد', eta:'متوقع انتظار', now:'ابھی',
+  waiting:'انتظار میں', goto:'کاؤنٹر {n} پر جائیں', complete:'کام مکمل', skipped_pill:'ٹوکن نظرانداز', issued_at:'جاری: {t}',
+  note_wait:'آپ کی باری تقریباً {t} پر متوقع ہے۔ جب {n} افراد آپ سے آگے ہوں گے تو ہم اطلاع دیں گے۔', note_wait_other:'باری تقریباً {t} پر متوقع ہے۔',
+  note_nocounter:'اس وقت کوئی کاؤنٹر کھلا نہیں۔ آپ کی جگہ محفوظ ہے اور کاؤنٹر کھلتے ہی اندازہ ظاہر ہو گا۔',
+  note_called:'آپ کو {t} پر بلایا گیا۔ براہِ کرم کاؤنٹر پر جائیں۔', note_done:'آپ نے {w} انتظار کیا۔ ٹوکن لیتے وقت ہمارا اندازہ {e} تھا۔',
+  note_skip:'کاؤنٹر نے یہ ٹوکن چھوڑ دیا کیونکہ آپ نہیں پہنچے۔ دوبارہ شامل ہونے کے لیے نیا ٹوکن لیں۔',
+  say_wait:'ٹوکن {l}۔ آپ قطار میں {p} نمبر پر ہیں، آگے {a} افراد ہیں۔ متوقع انتظار {w}۔', say_go:'ٹوکن {l}۔ براہِ کرم ابھی کاؤنٹر {c} پر جائیں۔',
+  new_token:'نیا ٹوکن لیں', read_aloud:'صورتحال سنیں',
+  rate_q:'یہ کتنا آسان تھا؟', rate_thanks:'شکریہ۔ آپ کی رائے ہمیں بہتر بنانے میں مدد دیتی ہے۔',
+  rate_1:'بہت مشکل', rate_2:'مشکل', rate_3:'ٹھیک', rate_4:'آسان', rate_5:'بہت آسان',
+  qr_title:'داخلی دروازے پر اسکین کریں', qr_text:'یہ کوڈ دروازے پر لگائیں۔ لوگ اپنے فون سے اسکین کر کے یہ صفحہ کھولیں اور ٹوکن لیں، کوئی ایپ انسٹال کرنے کی ضرورت نہیں۔',
+  board_title:'اب باری', board_meta:'{n} میں سے {o} کاؤنٹر کھلے ہیں', closed:'بند', free:'خالی', counter:'کاؤنٹر', closing:'بند ہو رہا ہے',
+  queue_title:'قطار میں انتظار', in_line:'{n} قطار میں', you:'آپ', priority:'ترجیحی', more:'+ {n} مزید', nobody:'کوئی انتظار میں نہیں۔',
+  alerts_title:'آپ کے الرٹ', perm:'براؤزر نوٹیفکیشن کی اجازت دیں',
+  alerts_note:'الرٹ اسکرین پر ظاہر ہوتے ہیں اور ایک مختصر آواز آتی ہے۔ سننے کے لیے اوپر "آواز والے الرٹ" آن کریں، یا براؤزر نوٹیفکیشن کی اجازت دیں تاکہ یہ ٹیب پس منظر میں ہو تب بھی پاپ اپ ملے۔',
+  alerts_empty:'آپ کے ٹوکن کے الرٹ یہاں ظاہر ہوں گے۔', ch_app:'ایپ میں',
+  n_issued_t:'ٹوکن {l} جاری ہو گیا', n_issued_b:'آپ قطار میں {p} نمبر پر ہیں۔ متوقع انتظار: {w}۔',
+  n_near_t:'آپ کی باری قریب ہے', n_near_b:'{l}: آپ سے آگے {a} افراد ہیں، تقریباً {w} باقی ہیں۔ براہِ کرم سروس ایریا کی طرف آئیں۔',
+  n_called_t:'کاؤنٹر {c} پر جائیں', n_called_b:'{l} کو ابھی بلایا جا رہا ہے۔',
+  n_up_t:'انتظار کا وقت بڑھ گیا', n_up_b:'{l}: آپ کا متوقع انتظار اب {w} ہے (پہلے {o} تھا)۔',
+  n_down_t:'انتظار کا وقت کم ہو گیا', n_down_b:'{l}: آپ کا متوقع انتظار اب {w} ہے (پہلے {o} تھا)۔',
+  n_skip_t:'ٹوکن نظرانداز', n_skip_b:'{l} کو کاؤنٹر نے چھوڑ دیا۔ قطار میں دوبارہ شامل ہونے کے لیے نیا ٹوکن لیں۔',
+  perm_ok:'فعال ہو گیا۔ باری قریب آنے پر آپ کو پاپ اپ ملے گا۔', perm_no:'فعال نہیں ہوا۔ اسکرین پر الرٹ پھر بھی ظاہر ہوں گے۔',
+  track_title:'ٹوکن ٹریک کریں', track_intro:'قطار میں ٹوکن کی جگہ دیکھنے کے لیے ٹوکن نمبر درج کریں۔ لاگ اِن کی ضرورت نہیں۔',
+  track_lbl:'ٹوکن نمبر', track_btn:'ٹریک کریں', track_try:'ان میں سے کوئی آزمائیں:',
+  track_none:'ٹوکن {l} نہیں ملا۔ اپنی پرچی پر حرف اور نمبر دوبارہ دیکھیں۔',
+  track_follow:'اس ٹوکن کے لیے مجھے اطلاع دیں', track_mine:'آپ اس ٹوکن کو فالو کر رہے ہیں', follow_ok:'ٹوکن {l} فالو کیا جا رہا ہے۔ قریب آنے پر ہم اطلاع دیں گے۔',
+  track_how:'ٹریکنگ کیسے کام کرتی ہے', track_how_text:'ہر ٹوکن کا ایک نمبر پرچی پر چھپا ہوتا ہے اور ٹوکن کے صفحے پر نظر آتا ہے۔ نمبر رکھنے والا کوئی بھی شخص بغیر لاگ اِن کے قطار میں اس کی جگہ اور متوقع انتظار دیکھ سکتا ہے۔ نام اور فون نمبر یہاں کبھی ظاہر نہیں کیے جاتے۔ حقیقی نظام میں ہر پرچی پر ایک کیو آر کوڈ بھی ہو گا جو یہ صفحہ براہِ راست کھولے۔'
+}};
+function T(k, v) {
+  let s = (L[lang] && L[lang][k]) ?? L.en[k] ?? k;
+  if (v) for (const x in v) s = s.split('{' + x + '}').join(v[x]);
+  return s;
+}
+const fmtL = m => {
+  if (lang !== 'ur') return fmt(m);
+  if (m == null || !isFinite(m)) return '–';
+  if (m < 1) return 'ایک منٹ سے کم';
+  m = Math.round(m);
+  return m < 60 ? m + ' منٹ' : Math.floor(m/60) + ' گھنٹہ ' + (m%60) + ' منٹ';
+};
+const ordL = n => lang === 'ur' ? String(n) : ord(n);
+
+function applyLang() {
+  $$('[data-i18n]').forEach(e => e.textContent = T(e.dataset.i18n));
+  $$('[data-i18n-aria]').forEach(e => e.setAttribute('aria-label', T(e.dataset.i18nAria)));
+  ['tab-citizen', 'tab-track'].forEach(id => { const e = $('#' + id); e.dir = lang === 'ur' ? 'rtl' : 'ltr'; e.lang = lang; });
+  $('#toasts').dir = lang === 'ur' ? 'rtl' : 'ltr'; $('#toasts').lang = lang;
+  $('#tablist').lang = lang;
+  $$('[data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === lang));
+}
+function applyPrefs() {
+  document.body.style.zoom = prefs.zoom;
+  document.documentElement.dataset.contrast = prefs.contrast ? 'high' : 'normal';
+  $$('[data-zoom]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.zoom === prefs.zoom));
+  $('#btnContrast').setAttribute('aria-pressed', prefs.contrast);
+  $('#btnVoice').setAttribute('aria-pressed', prefs.voice);
+  applyLang();
+}
+
+/* ---------- configuration ---------- */
+const PRESETS = {
+  hospital: { name:'City Hospital – outpatient desk', prefix:'A', s:6,   lambdaHr:21, open0:3, max:6, target:15 },
+  bank:     { name:'Bank branch – teller counters',   prefix:'B', s:4.5, lambdaHr:28, open0:3, max:6, target:8 },
+  gov:      { name:'Passport and ID office',          prefix:'G', s:9,   lambdaHr:14, open0:3, max:6, target:20 }
+};
+let S = null, paused = false, speed = 1, activeTab = 'citizen', cEls = [];
+let taskStart = null, lastPick = 0;
+const usab = { times: [], ratings: [], tracks: 0, voice: [] };
+
+/* ---------- queueing maths ---------- */
+function erlangC(c, a) {
+  if (c <= a) return 1;
+  let sum = 0, term = 1;
+  for (let k = 0; k < c; k++) { sum += term; term *= a / (k + 1); }
+  const top = term * c / (c - a);
+  return top / (sum + top);
+}
+function predWq(c, lamPerMin, s) {
+  const a = lamPerMin * s;
+  if (c <= 0 || c <= a) return Infinity;
+  return erlangC(c, a) * s / (c - a);
+}
+function simulateWaits(counters, queue, now, s) {
+  const free = [];
+  for (const c of counters) {
+    if (!c.open || c.pendingClose) continue;
+    if (c.token) free.push(Math.max(0.35 * s, s - (now - c.startedAt)));
+    else free.push(0);
+  }
+  if (!free.length) return queue.map(() => null);
+  return queue.map(() => {
+    let k = 0;
+    for (let i = 1; i < free.length; i++) if (free[i] < free[k]) k = i;
+    const w = free[k]; free[k] += s; return w;
+  });
+}
+const waitForNew = (counters = S.counters) => {
+  const w = simulateWaits(counters, S.queue.concat([{}]), S.now, S.sEwma);
+  return w[w.length - 1];
+};
+function rate(win) {
+  const w = Math.min(win, S.now);
+  if (w < 5) return S.lambdaHr / 60;
+  return S.arrivals.filter(t => t > S.now - w).length / w;
+}
+function metrics() {
+  const open = S.counters.filter(c => c.open && !c.pendingClose).length;
+  const lam = rate(20), lamF = 0.7 * rate(10) + 0.3 * rate(30), s = S.sEwma;
+  let rec = S.p.max, reachable = false;
+  for (let c = 1; c <= S.p.max; c++) {
+    if (lamF * s / c <= 0.9 && predWq(c, lamF, s) <= S.p.target) { rec = c; reachable = true; break; }
+  }
+  return { open, lam, lamF, s, rho: open ? lam * s / open : Infinity, rec, reachable,
+           wq: open ? predWq(open, lam, s) : Infinity, wnew: waitForNew(), wqRec: predWq(rec, lamF, s) };
+}
+
+/* ---------- state ---------- */
+function init(key) {
+  const p = PRESETS[key];
+  S = { key, p, now: 0, seq: 0, queue: [], done: [], noshow: 0, arrivals: [], history: [], events: [], notifs: [],
+        registry: new Map(), trackLabel: '', trackErr: '', lastAnn: '', lastSummary: '',
+        counters: Array.from({length: p.max}, (_, i) => ({ id: i+1, open: i < p.open0, pendingClose: false, token: null,
+          startedAt: 0, dur: 0, served: 0, busyTime: 0, openTime: 0 })),
+        sEwma: p.s, lambdaHr: p.lambdaHr, auto: true, lastHist: -99, maxQ: 0,
+        my: null, flags: {}, etaRef: null, notifyAhead: 3, phone: '', alertMin: 15 };
+  for (let i = 0; i < 250; i++) step(0.2);
+  S.events = []; S.notifs = []; S.maxQ = S.queue.length;
+  $('#lambda').value = S.lambdaHr;
+  $('#autoMode').checked = true;
+  $('#trIn').placeholder = p.prefix + '031';
+  buildCounters();
+}
+const sampleService = m => Math.min(Math.max(-(m/2) * (Math.log(1 - Math.random()) + Math.log(1 - Math.random())), 0.6), m * 3.5);
+function poisson(l) { const L0 = Math.exp(-l); let k = 0, p = 1; do { k++; p *= Math.random(); } while (p > L0); return k - 1; }
+
+function addToken({ mine = false, priority = Math.random() < 0.1, name = '' } = {}) {
+  const t = { id: ++S.seq, label: S.p.prefix + String(S.seq).padStart(3, '0'), priority, issuedAt: S.now,
+              status: 'waiting', counter: null, calledAt: null, doneAt: null, mine, name, estAtIssue: null, aheadAtIssue: 0, rated: 0 };
+  let idx = S.queue.length;
+  if (priority) { idx = 0; while (idx < S.queue.length && S.queue[idx].priority) idx++; }
+  S.queue.splice(idx, 0, t);
+  t.aheadAtIssue = idx;
+  t.estAtIssue = simulateWaits(S.counters, S.queue, S.now, S.sEwma)[idx];
+  S.registry.set(t.label, t);
+  if (S.registry.size > 500) S.registry.delete(S.registry.keys().next().value);
+  S.arrivals.push(S.now);
+  S.maxQ = Math.max(S.maxQ, S.queue.length);
+  return t;
+}
+function callNext(c) {
+  if (!c.open || c.token || c.pendingClose || !S.queue.length) return;
+  const t = S.queue.shift();
+  t.status = 'serving'; t.counter = c.id; t.calledAt = S.now;
+  c.token = t; c.startedAt = S.now; c.dur = sampleService(S.p.s);
+}
+function complete(c) {
+  const t = c.token; if (!t) return;
+  t.status = 'done'; t.doneAt = S.now;
+  const dur = S.now - c.startedAt;
+  S.sEwma = 0.85 * S.sEwma + 0.15 * dur;
+  c.served++; c.token = null;
+  S.done.push({ wait: t.calledAt - t.issuedAt, service: dur, est: t.estAtIssue, counter: c.id, t: S.now });
+  if (S.done.length > 600) S.done.shift();
+}
+function skip(c) {
+  const t = c.token; if (!t) return;
+  t.status = 'noshow'; t.doneAt = S.now; c.token = null; S.noshow++;
+}
+function step(h) {
+  S.now += h;
+  const n = poisson(S.lambdaHr / 60 * h);
+  for (let i = 0; i < n; i++) addToken();
+  while (S.arrivals.length && S.arrivals[0] < S.now - 60) S.arrivals.shift();
+  for (const c of S.counters) {
+    if (c.open) { c.openTime += h; if (c.token) c.busyTime += h; }
+    if (S.auto && c.token && S.now >= c.startedAt + c.dur) complete(c);
+  }
+  if (S.auto) for (const c of S.counters) callNext(c);
+  for (const c of S.counters) if (c.pendingClose && !c.token) { c.open = false; c.pendingClose = false; }
+  if (S.now - S.lastHist >= 1) {
+    S.lastHist = S.now;
+    S.history.push({ t: S.now, q: S.queue.length, w: waitForNew() });
+    if (S.history.length > 400) S.history.shift();
+  }
+  checkMine();
+}
+
+/* ---------- staff actions ---------- */
+const openCount = () => S.counters.filter(c => c.open && !c.pendingClose).length;
+function logEvent(kind, msg, before, after) { S.events.unshift({ t: S.now, kind, msg, before, after }); if (S.events.length > 40) S.events.pop(); }
+function openCounter(c) {
+  const before = waitForNew();
+  c.open = true; c.pendingClose = false;
+  logEvent('counter', `Counter ${c.id} opened`, before, waitForNew());
+}
+function closeCounter(c) {
+  const before = waitForNew();
+  if (c.token) { c.pendingClose = true; logEvent('counter', `Counter ${c.id} will close after its current customer`, before, waitForNew()); }
+  else { c.open = false; logEvent('counter', `Counter ${c.id} closed`, before, waitForNew()); }
+}
+function applyRec() {
+  const m = metrics(); let cur = openCount();
+  while (cur < m.rec) {
+    const c = S.counters.find(c => !c.open || c.pendingClose); if (!c) break;
+    if (c.pendingClose) c.pendingClose = false; else openCounter(c);
+    cur++;
+  }
+  while (cur > m.rec) {
+    const rev = [...S.counters].reverse();
+    const c = rev.find(c => c.open && !c.pendingClose && !c.token) || rev.find(c => c.open && !c.pendingClose);
+    if (!c) break; closeCounter(c); cur--;
+  }
+}
+function buildCounters() {
+  const box = $('#counters'); box.innerHTML = ''; cEls = [];
+  S.counters.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'counter';
+    el.innerHTML = `<div class="c-head"><h3>Counter ${c.id}</h3><span class="chip">Closed</span></div>
+      <div class="c-board"><b class="c-tok">–</b><span class="c-sub"></span></div>
+      <div class="bar" aria-hidden="true"><i></i></div>
+      <div class="c-actions"><button class="btn b-toggle">Open</button><button class="btn b-call">Call next</button><button class="btn b-done">Complete</button><button class="btn b-skip">No-show</button></div>
+      <p class="c-meta"></p>`;
+    box.appendChild(el);
+    const r = { el, chip: el.querySelector('.chip'), tok: el.querySelector('.c-tok'), sub: el.querySelector('.c-sub'),
+      bar: el.querySelector('.bar i'), meta: el.querySelector('.c-meta'),
+      toggle: el.querySelector('.b-toggle'), call: el.querySelector('.b-call'), done: el.querySelector('.b-done'), skip: el.querySelector('.b-skip') };
+    r.toggle.onclick = () => { if (!c.open) openCounter(c); else if (c.pendingClose) c.pendingClose = false; else closeCounter(c); render(); };
+    r.call.onclick = () => { callNext(c); render(); };
+    r.done.onclick = () => { complete(c); render(); };
+    r.skip.onclick = () => { skip(c); render(); };
+    cEls.push(r);
+  });
+}
+
+/* ---------- notifications and voice ---------- */
+let ac = null, muteSpeech = false;
+function beep(kind) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = kind === 'called' ? 880 : 640; o.type = 'sine';
+    g.gain.setValueAtTime(0.0001, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.18, ac.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + (kind === 'called' ? 0.5 : 0.3));
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.55);
+  } catch (e) {}
+}
+function speak(text, force) {
+  if (muteSpeech) return;
+  if (!force && !prefs.voice) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang === 'ur' ? 'ur-PK' : 'en-US'; u.rate = 0.95;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+function toast(title, body) {
+  const d = document.createElement('div'); d.className = 'toast';
+  d.innerHTML = `<b>${esc(title)}</b>${esc(body)}`;
+  $('#toasts').appendChild(d); setTimeout(() => d.remove(), 7000);
+}
+function notify(kind, title, body) {
+  S.notifs.unshift({ t: S.now, kind, title, body, channel: T('ch_app') });
+  if (S.notifs.length > 30) S.notifs.pop();
+  toast(title, body); beep(kind); speak(title + '. ' + body);
+  try { if ('Notification' in window && Notification.permission === 'granted') new Notification(title, { body }); } catch (e) {}
+}
+function checkMine() {
+  const t = S.my; if (!t) return;
+  if (t.status === 'waiting') {
+    const idx = S.queue.indexOf(t); if (idx < 0) return;
+    const eta = simulateWaits(S.counters, S.queue, S.now, S.sEwma)[idx];
+    if (!S.flags.near && (idx <= S.notifyAhead || (eta != null && eta <= S.alertMin))) {
+      S.flags.near = true;
+      notify('near', T('n_near_t'), T('n_near_b', { l: t.label, a: idx, w: fmtL(eta) }));
+    }
+    if (eta != null) {
+      if (S.etaRef == null) S.etaRef = eta;
+      else if (eta - S.etaRef >= 10) { notify('delay', T('n_up_t'), T('n_up_b', { l: t.label, w: fmtL(eta), o: fmtL(S.etaRef) })); S.etaRef = eta; }
+      else if (S.etaRef - eta >= 10) { notify('near', T('n_down_t'), T('n_down_b', { l: t.label, w: fmtL(eta), o: fmtL(S.etaRef) })); S.etaRef = eta; }
+    }
+  } else if (t.status === 'serving' && !S.flags.called) {
+    S.flags.called = true;
+    notify('called', T('n_called_t', { c: t.counter }), T('n_called_b', { l: t.label }));
+  } else if (t.status === 'noshow' && !S.flags.skipped) {
+    S.flags.skipped = true;
+    notify('delay', T('n_skip_t'), T('n_skip_b', { l: t.label }));
+  }
+}
+
+/* ---------- token panel (used by Get token and Track token) ---------- */
+const STEP_KEYS = ['st_issued', 'st_inline', 'st_called', 'st_served'];
+function panelHTML(p) {
+  return `<div class="ticket"><div class="lbl" id="${p}Label">A001</div><div class="sub" id="${p}Sub"></div></div>
+    <div style="text-align:center"><span class="status-pill wait" id="${p}Status"></span></div>
+    <ol class="steps" id="${p}Steps">${[1,2,3,4].map(i => `<li><span class="dot">${i}</span><span class="lab"></span></li>`).join('')}</ol>
+    <div class="tk-grid">
+      <div><b id="${p}Pos">–</b><span data-i18n="pos"></span></div>
+      <div><b id="${p}Ahead">–</b><span data-i18n="ahead"></span></div>
+      <div><b id="${p}Eta">–</b><span data-i18n="eta"></span></div>
+    </div>
+    <div class="bar" aria-hidden="true"><i id="${p}Bar"></i></div>
+    <p class="note" id="${p}Note"></p>`;
+}
+function setStepper(ol, st) {
+  [...ol.children].forEach((li, i) => {
+    li.className = st[i] || '';
+    li.querySelector('.dot').textContent = st[i] === 'done' ? '✓' : st[i] === 'fail' ? '!' : i + 1;
+    li.querySelector('.lab').textContent = (i === 2 && st[i] === 'fail') ? T('st_skipped') : T(STEP_KEYS[i]);
+    if (st[i] === 'now') li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+  });
+}
+function fillPanel(p, t) {
+  const g = id => $('#' + p + id);
+  g('Label').textContent = t.label;
+  g('Sub').textContent = `${S.p.name} · ${T('issued_at', { t: clockStr(t.issuedAt) })}${t.priority ? ' · ' + T('prio_short') : ''}`;
+  const st = g('Status'), note = g('Note'), mine = S.my === t;
+  let summary = '', idx = -1;
+  if (t.status === 'waiting') {
+    idx = S.queue.indexOf(t);
+    const eta = simulateWaits(S.counters, S.queue, S.now, S.sEwma)[idx];
+    st.className = 'status-pill wait'; st.textContent = '⏳ ' + T('waiting');
+    setStepper(g('Steps'), ['done', 'now', '', '']);
+    g('Pos').textContent = ordL(idx + 1); g('Ahead').textContent = idx; g('Eta').textContent = fmtL(eta);
+    g('Bar').style.width = Math.round(100 * (1 - idx / Math.max(t.aheadAtIssue, 1))) + '%';
+    note.textContent = eta == null ? T('note_nocounter') : (mine ? T('note_wait', { t: clockStr(S.now + eta), n: S.notifyAhead }) : T('note_wait_other', { t: clockStr(S.now + eta) }));
+    summary = T('say_wait', { l: t.label.split('').join(' '), p: idx + 1, a: idx, w: fmtL(eta) });
+  } else if (t.status === 'serving') {
+    st.className = 'status-pill go'; st.textContent = '📣 ' + T('goto', { n: t.counter });
+    setStepper(g('Steps'), ['done', 'done', 'now', '']);
+    g('Pos').textContent = T('now'); g('Ahead').textContent = 0; g('Eta').textContent = '0';
+    g('Bar').style.width = '100%';
+    note.textContent = T('note_called', { t: clockStr(t.calledAt) });
+    summary = T('say_go', { l: t.label.split('').join(' '), c: t.counter });
+  } else if (t.status === 'done') {
+    st.className = 'status-pill ok'; st.textContent = '✓ ' + T('complete');
+    setStepper(g('Steps'), ['done', 'done', 'done', 'done']);
+    g('Pos').textContent = '✓'; g('Ahead').textContent = '–'; g('Eta').textContent = '–';
+    g('Bar').style.width = '100%';
+    note.textContent = T('note_done', { w: fmtL(t.calledAt - t.issuedAt), e: fmtL(t.estAtIssue) });
+    summary = note.textContent;
+  } else {
+    st.className = 'status-pill bad'; st.textContent = '⚠ ' + T('skipped_pill');
+    setStepper(g('Steps'), ['done', 'done', 'fail', '']);
+    g('Pos').textContent = '–'; g('Ahead').textContent = '–'; g('Eta').textContent = '–';
+    g('Bar').style.width = '0%';
+    note.textContent = T('note_skip');
+    summary = note.textContent;
+  }
+  return { summary, idx };
+}
+
+/* ---------- rendering ---------- */
+function render() {
+  $('#clock').firstChild.nodeValue = clockStr(S.now);
+  if (activeTab === 'citizen') renderCitizen();
+  else if (activeTab === 'track') renderTrack();
+  else if (activeTab === 'staff') renderStaff();
+  else if (activeTab === 'analytics') renderAnalytics();
+  else renderHci();
+}
+function boardHTML() {
+  const t = S.my;
+  return S.counters.map(c => {
+    const mine = t && c.token === t;
+    if (!c.open) return `<div class="slot off"><span>${T('counter')} ${c.id}</span><b>${T('closed')}</b></div>`;
+    if (!c.token) return `<div class="slot free"><span>${T('counter')} ${c.id}</span><b>${T('free')}</b></div>`;
+    return `<div class="slot${mine ? ' mine' : ''}"><span>${T('counter')} ${c.id}${c.pendingClose ? ' (' + T('closing') + ')' : ''}</span><b>${c.token.label}</b></div>`;
+  }).join('');
+}
+function renderCitizen() {
+  const t = S.my, m = waitForNew();
+  if (!t && taskStart == null) taskStart = performance.now();
+  $('#newWait').textContent = fmtL(m);
+  $('#newMeta').textContent = m == null ? T('no_counter') : T('meta_waiting', { q: S.queue.length, c: openCount() });
+  $('#noToken').hidden = !!t; $('#hasToken').hidden = !t;
+  if (t) {
+    const r = fillPanel('tk', t);
+    S.lastSummary = r.summary;
+    const key = t.label + '|' + t.status + '|' + r.idx;
+    if (key !== S.lastAnn) { S.lastAnn = key; $('#srLive').textContent = r.summary; }
+    const fin = t.status === 'done' || t.status === 'noshow';
+    $('#newTokenBtn').hidden = !fin;
+    $('#rateBox').hidden = t.status !== 'done';
+    $('#rateAsk').hidden = !!t.rated; $('#rateBtns').hidden = !!t.rated; $('#rateThanks').hidden = !t.rated;
+  }
+  $('#boardMeta').textContent = T('board_meta', { o: openCount(), n: S.counters.length });
+  $('#boardGrid').innerHTML = boardHTML();
+  const w = simulateWaits(S.counters, S.queue, S.now, S.sEwma);
+  $('#qMeta').textContent = T('in_line', { n: S.queue.length });
+  $('#qList').innerHTML = S.queue.length ? S.queue.slice(0, 10).map((q, i) =>
+    `<li class="${q === t ? 'mine' : ''}"><span class="tkn">${q.label}</span><span>${q === t ? `<span class="tag you">${T('you')}</span> ` : ''}${q.priority ? `<span class="tag">${T('priority')}</span>` : ''}</span><span class="muted">${fmtL(w[i])}</span></li>`).join('')
+    + (S.queue.length > 10 ? `<li><span></span><span class="muted">${T('more', { n: S.queue.length - 10 })}</span><span></span></li>` : '')
+    : `<li><span></span><span class="muted">${T('nobody')}</span><span></span></li>`;
+  $('#msgLog').innerHTML = S.notifs.length ? S.notifs.map(n =>
+    `<div class="${n.kind}"><b>${esc(n.title)}</b> ${esc(n.body)}<small>${clockStr(n.t)} · ${esc(n.channel)}</small></div>`).join('')
+    : `<p class="muted">${T('alerts_empty')}</p>`;
+}
+
+function normPhone(v) {
+  let d = String(v).replace(/[^\d+]/g, '');
+  if (d.startsWith('+')) d = d.slice(1);
+  if (d.startsWith('00')) d = d.slice(2);
+  if (/^0\d{10}$/.test(d)) d = '92' + d.slice(1);
+  else if (/^3\d{9}$/.test(d)) d = '92' + d;
+  return /^\d{11,15}$/.test(d) ? d : null;
+}
+function renderTrack() {
+  const t = S.trackLabel ? S.registry.get(S.trackLabel) : null;
+  const nowMs = performance.now();
+  if (nowMs - lastPick > 3000) {
+    lastPick = nowMs;
+    const picks = S.queue.slice(2, 5);
+    [0, 1, 2].forEach(i => { const b = $('#trTry' + i), q = picks[i]; b.hidden = !q; if (q) b.textContent = q.label; });
+    $('#trTryWrap').hidden = !picks.length;
+  }
+  $('#trErr').hidden = !S.trackErr;
+  if (S.trackErr) $('#trErr').textContent = T('track_none', { l: S.trackErr });
+  $('#trResult').hidden = !t;
+  if (t) {
+    fillPanel('tr', t);
+    const mine = S.my === t;
+    $('#trFollow').disabled = mine;
+    $('#trFollow').textContent = mine ? T('track_mine') : T('track_follow');
+    $('#trFollow').style.opacity = mine ? .6 : 1;
+  }
+  $('#boardMeta2').textContent = T('board_meta', { o: openCount(), n: S.counters.length });
+  $('#boardGrid2').innerHTML = boardHTML();
+}
+function normLabel(v) {
+  v = v.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (/^\d+$/.test(v)) return S.p.prefix + v.padStart(3, '0');
+  const m = v.match(/^([A-Z])(\d+)$/);
+  return m ? m[1] + m[2].padStart(3, '0') : v;
+}
+function doTrack(raw) {
+  const v = normLabel(raw || $('#trIn').value);
+  if (!v) { S.trackErr = ''; S.trackLabel = ''; render(); return; }
+  if (S.registry.has(v)) { S.trackLabel = v; S.trackErr = ''; usab.tracks++; $('#trIn').value = v; }
+  else { S.trackLabel = ''; S.trackErr = v; }
+  lastPick = 0; render();
+}
+function follow() {
+  const t = S.registry.get(S.trackLabel); if (!t) return;
+  S.notifyAhead = parseInt($('#inAhead').value, 10);
+  t.mine = true; S.my = t; S.flags = {}; S.etaRef = null; S.lastAnn = '';
+  toast(T('track_follow'), T('follow_ok', { l: t.label }));
+  render();
+}
+
+function renderStaff() {
+  const m = metrics();
+  const rhoTxt = isFinite(m.rho) ? Math.round(m.rho * 100) + '%' : '–';
+  const over = m.rho >= 1 || !isFinite(m.rho);
+  $('#staffKpis').innerHTML = `
+    <div class="kpi"><span>Waiting now</span><b>${S.queue.length}</b><small>Peak so far: ${S.maxQ}</small></div>
+    <div class="kpi ${m.wnew != null && m.wnew > S.p.target ? 'warn' : 'good'}"><span>Wait for a new arrival</span><b>${fmt(m.wnew)}</b><small>Target: ${S.p.target} min</small></div>
+    <div class="kpi"><span>Arrivals per hour</span><b>${Math.round(m.lam * 60)}</b><small>Last 20 min · forecast ${Math.round(m.lamF * 60)}/h</small></div>
+    <div class="kpi ${over ? 'warn' : ''}"><span>Counter load</span><b>${rhoTxt}</b><small>${m.open} open · ${(m.s).toFixed(1)} min per customer</small></div>
+    <div class="kpi"><span>Queueing theory check</span><b>${isFinite(m.wq) ? fmt(m.wq) : 'Overloaded'}</b><small>Predicted average wait (M/M/c)</small></div>`;
+  $('#lambdaOut').textContent = S.lambdaHr + '/h';
+  S.counters.forEach((c, i) => {
+    const r = cEls[i];
+    r.el.classList.toggle('closed', !c.open);
+    if (!c.open) { r.chip.className = 'chip'; r.chip.textContent = 'Closed'; }
+    else if (c.token) { r.chip.className = 'chip busy'; r.chip.textContent = c.pendingClose ? 'Closing' : 'Serving'; }
+    else { r.chip.className = 'chip free'; r.chip.textContent = 'Free'; }
+    r.tok.textContent = c.token ? c.token.label : '–';
+    r.sub.textContent = c.token ? `${fmt(S.now - c.startedAt)} so far` : (c.open ? 'waiting for next' : 'not staffed');
+    r.bar.style.width = c.token ? Math.min(100, 100 * (S.now - c.startedAt) / (1.5 * S.sEwma)) + '%' : '0%';
+    r.meta.textContent = `${c.served} served today`;
+    r.toggle.textContent = !c.open ? 'Open' : (c.pendingClose ? 'Keep open' : 'Close');
+    r.call.disabled = !(c.open && !c.token && !c.pendingClose && S.queue.length);
+    r.done.disabled = !c.token; r.skip.disabled = !c.token;
+  });
+  const w = simulateWaits(S.counters, S.queue, S.now, S.sEwma);
+  $('#staffQMeta').textContent = `${S.queue.length} waiting`;
+  $('#staffQ').innerHTML = S.queue.slice(0, 12).map((q, i) =>
+    `<tr><td><b class="num" style="font-size:20px">${q.label}</b>${q.mine ? ' <span class="tag you">You</span>' : ''}</td><td>${q.priority ? 'Priority' : 'Regular'}</td><td>${fmt(S.now - q.issuedAt)}</td><td>${fmt(w[i])}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">Nobody is waiting.</td></tr>';
+  const diff = m.rec - m.open;
+  $('#recText').innerHTML = (m.reachable
+    ? `At about <b>${Math.round(m.lamF * 60)}</b> arrivals per hour and <b>${m.s.toFixed(1)}</b> min per customer, <b>${m.rec}</b> counters keep the predicted average wait near ${fmt(m.wqRec)}, under the ${S.p.target} min target.`
+    : `Demand is above what ${S.p.max} counters can handle within the ${S.p.target} min target. Open every counter and consider extra staff or appointment slots.`)
+    + (diff > 0 ? ` You have ${m.open} open: <b>open ${diff} more</b>.` : diff < 0 ? ` You have ${m.open} open: you could <b>close ${-diff}</b>.` : ` Your staffing matches this.`);
+  $('#applyRec').disabled = diff === 0;
+  const rows = [];
+  for (const add of [1, 2]) {
+    const cl = S.counters.map(c => ({ ...c })); let n = 0;
+    for (const c of cl) if (!c.open && n < add) { c.open = true; c.token = null; n++; }
+    if (n === add) rows.push(`<div><span>Open ${add} more counter${add > 1 ? 's' : ''}</span><span><b>${fmt(m.wnew)}</b><span class="arrow">→</span><b class="better">${fmt(waitForNew(cl))}</b></span></div>`);
+  }
+  $('#whatif').innerHTML = rows.join('') || '<p class="muted">All counters are already open.</p>';
+  $('#eventLog').innerHTML = S.events.length ? S.events.map(e =>
+    `<li class="${e.kind}"><small>${clockStr(e.t)}</small> ${esc(e.msg)}${e.before !== undefined && e.kind === 'counter' ? `<br><small>Wait for a new arrival: ${fmt(e.before)} → ${fmt(e.after)}</small>` : ''}</li>`).join('')
+    : '<li class="muted">Open or close a counter, or change demand.</li>';
+}
+
+function lineChart(key, color, target) {
+  const W = 640, H = 190, Lm = 38, R = 10, Tm = 10, B = 24;
+  const t1 = S.now, t0 = Math.max(0, t1 - 120);
+  const pts = S.history.filter(h => h.t >= t0 && h[key] != null);
+  if (pts.length < 2) return '<p class="muted">Collecting data…</p>';
+  const ymax = Math.max(...pts.map(p => p[key]), target || 0, key === 'q' ? 5 : 10) * 1.15;
+  const X = t => Lm + (t - t0) / ((t1 - t0) || 1) * (W - Lm - R), Y = v => Tm + (1 - v / ymax) * (H - Tm - B);
+  let g = '';
+  for (const f of [0, .5, 1]) { const v = ymax * f; g += `<line class="grid" x1="${Lm}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${Lm-6}" y="${Y(v)+4}" text-anchor="end">${Math.round(v)}</text>`; }
+  for (let m = Math.ceil(t0 / 30) * 30; m <= t1; m += 30) g += `<text x="${X(m)}" y="${H-6}" text-anchor="middle">${clockStr(m)}</text>`;
+  const ev = S.events.filter(e => e.t >= t0).map(e => `<line class="evt" x1="${X(e.t)}" x2="${X(e.t)}" y1="${Tm}" y2="${H-B}"><title>${esc(e.msg)}</title></line>`).join('');
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p[key]).toFixed(1)).join('');
+  const tg = target ? `<line class="tgt" x1="${Lm}" x2="${W-R}" y1="${Y(target)}" y2="${Y(target)}"/><text x="${W-R}" y="${Y(target)-4}" text-anchor="end">target ${target}</text>` : '';
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${key === 'q' ? 'Queue length' : 'Estimated wait'} over the last two hours">${g}${ev}${tg}<path class="ln" d="${d}" stroke="${color}"/></svg>`;
+}
+function renderAnalytics() {
+  const d = S.done, n = d.length;
+  const avgWait = avg(d.map(x => x.wait)), avgSvc = avg(d.map(x => x.service));
+  const recent = d.slice(-10).map(x => x.wait);
+  const longestWaiting = S.queue.length ? Math.max(...S.queue.map(q => S.now - q.issuedAt)) : 0;
+  const longest = Math.max(longestWaiting, ...d.map(x => x.wait), 0);
+  const errs = d.filter(x => x.est != null).slice(-60).map(x => Math.abs(x.est - x.wait));
+  const mae = avg(errs), within5 = errs.length ? Math.round(100 * errs.filter(e => e <= 5).length / errs.length) : null;
+  const ease = avg(usab.ratings);
+  $('#anKpis').innerHTML = `
+    <div class="kpi"><span>Average wait</span><b>${fmt(avgWait)}</b><small>Last 10 tokens: ${fmt(avg(recent))}</small></div>
+    <div class="kpi good"><span>Completed tokens</span><b>${n}</b><small>${S.noshow} no-shows</small></div>
+    <div class="kpi"><span>Queue length</span><b>${S.queue.length}</b><small>Peak: ${S.maxQ}</small></div>
+    <div class="kpi"><span>Longest wait</span><b>${fmt(longest)}</b><small>Longest still waiting: ${fmt(longestWaiting)}</small></div>
+    <div class="kpi"><span>Average service time</span><b>${fmt(avgSvc)}</b><small>Learned estimate: ${S.sEwma.toFixed(1)} min</small></div>
+    <div class="kpi"><span>Estimate accuracy</span><b>${mae == null ? '–' : '±' + mae.toFixed(1) + ' min'}</b><small>${within5 == null ? '' : within5 + '% within 5 min of actual'}</small></div>
+    <div class="kpi"><span>Ease rating</span><b>${ease == null ? '–' : ease.toFixed(1) + ' / 5'}</b><small>${usab.ratings.length} citizen rating${usab.ratings.length === 1 ? '' : 's'}</small></div>`;
+  $('#chartQ').innerHTML = lineChart('q', 'var(--teal)');
+  $('#chartW').innerHTML = lineChart('w', 'var(--blue)', S.p.target);
+  $('#utilBars').innerHTML = S.counters.map(c => {
+    const u = c.openTime > 0 ? Math.round(100 * c.busyTime / c.openTime) : 0;
+    return `<div><span>Counter ${c.id}${c.open ? '' : ' (closed)'}</span><span class="bar"><i style="width:${u}%"></i></span><span class="muted">${u}% busy · ${c.served} served</span></div>`;
+  }).join('');
+  $('#accNote').textContent = errs.length ? `Across the last ${errs.length} completed tokens, the wait quoted at check-in was off by ${mae.toFixed(1)} min on average.` : '';
+}
+function renderHci() {
+  const ease = avg(usab.ratings), last = usab.times.length ? usab.times[usab.times.length - 1] : null;
+  $('#hciLive').innerHTML = `
+    <div class="kpi"><span>Time to get a token</span><b>${last == null ? '–' : last.toFixed(0) + ' s'}</b><small>Last attempt (form shown to token issued)</small></div>
+    <div class="kpi"><span>Average time</span><b>${usab.times.length ? avg(usab.times).toFixed(0) + ' s' : '–'}</b><small>${usab.times.length} attempt${usab.times.length === 1 ? '' : 's'}</small></div>
+    <div class="kpi"><span>Ease rating</span><b>${ease == null ? '–' : ease.toFixed(1) + ' / 5'}</b><small>${usab.ratings.length} rating${usab.ratings.length === 1 ? '' : 's'}</small></div>
+    <div class="kpi"><span>Tokens tracked by number</span><b>${usab.tracks}</b><small>Searches that found a token</small></div>
+    <div class="kpi"><span>Registered by voice</span><b>${usab.voice.length}</b><small>${usab.voice.length ? 'Average ' + avg(usab.voice).toFixed(0) + ' s from first request' : 'Use the microphone card'}</small></div>
+    <div class="kpi"><span>Settings in use</span><b style="font-size:26px">${prefs.lang === 'ur' ? 'اردو' : 'English'}</b><small>Text ${Math.round(prefs.zoom * 100)}% · ${prefs.contrast ? 'high contrast' : 'standard contrast'} · voice ${prefs.voice ? 'on' : 'off'}</small></div>`;
+}
+
+/* ---------- wiring ---------- */
+function registerToken({ name = '', pn = null, priority = false, notifyAhead = 3, alertMin = 15, trackTime = true } = {}) {
+  S.phone = pn ? '+' + pn : '';
+  S.notifyAhead = notifyAhead; S.alertMin = alertMin;
+  if (trackTime && taskStart != null) usab.times.push((performance.now() - taskStart) / 1000);
+  taskStart = null;
+  const t = addToken({ mine: true, priority, name });
+  t.phone = S.phone;
+  S.my = t; S.flags = {}; S.etaRef = t.estAtIssue; S.lastAnn = '';
+  notify('issued', T('n_issued_t', { l: t.label }), T('n_issued_b', { p: ordL(S.queue.indexOf(t) + 1), w: fmtL(t.estAtIssue) }));
+  render();
+  return t;
+}
+function getToken() {
+  const name = $('#inName').value.trim();
+  const raw = $('#inPhone').value.trim(), pn = raw ? normPhone(raw) : null;
+  if (raw && !pn) { const e = $('#phoneErr'); e.hidden = false; e.textContent = T('phone_bad'); $('#inPhone').focus(); return; }
+  $('#phoneErr').hidden = true;
+  registerToken({ name, pn, priority: $('#inPrio').checked, notifyAhead: parseInt($('#inAhead').value, 10), alertMin: parseInt($('#inAlertMin').value, 10) });
+}
+$('#tkPanel').innerHTML = panelHTML('tk');
+$('#trPanel').innerHTML = panelHTML('tr');
+$('#getToken').onclick = getToken;
+$('#newTokenBtn').onclick = () => { S.my = null; S.flags = {}; render(); };
+$('#speakBtn').onclick = () => speak(S.lastSummary, true);
+$$('#rateBtns button').forEach(b => b.onclick = () => {
+  if (S.my && S.my.status === 'done' && !S.my.rated) { S.my.rated = +b.dataset.r; usab.ratings.push(+b.dataset.r); render(); }
+});
+$('#permBtn').onclick = () => {
+  try { Notification.requestPermission().then(p => toast(T('perm'), p === 'granted' ? T('perm_ok') : T('perm_no'))); }
+  catch (e) { toast(T('perm'), T('perm_no')); }
+};
+$('#trBtn').onclick = () => doTrack();
+$('#trIn').addEventListener('keydown', e => { if (e.key === 'Enter') doTrack(); });
+[0, 1, 2].forEach(i => $('#trTry' + i).onclick = () => doTrack($('#trTry' + i).textContent));
+$('#trFollow').onclick = follow;
+$('#applyRec').onclick = () => { applyRec(); render(); };
+$('#autoMode').onchange = e => { S.auto = e.target.checked; logEvent('demand', S.auto ? 'Simulated staff turned on' : 'Manual mode: call and complete tokens yourself'); render(); };
+$('#lambda').oninput = e => { S.lambdaHr = +e.target.value; $('#lambdaOut').textContent = S.lambdaHr + '/h'; };
+$('#lambda').onchange = () => { logEvent('demand', `Arrivals set to ${S.lambdaHr} per hour`); };
+$('#rush').onclick = () => { S.lambdaHr = Math.min(140, Math.round(S.p.lambdaHr * 2.5)); $('#lambda').value = S.lambdaHr; logEvent('demand', `Rush hour: arrivals up to ${S.lambdaHr} per hour`); render(); };
+$('#calm').onclick = () => { S.lambdaHr = S.p.lambdaHr; $('#lambda').value = S.lambdaHr; logEvent('demand', `Demand back to ${S.lambdaHr} per hour`); render(); };
+$('#venue').onchange = e => { init(e.target.value); taskStart = null; drawQR(); render(); };
+$('#reset').onclick = () => { init(S.key); taskStart = null; render(); };
+$('#pause').onclick = e => { paused = !paused; e.target.textContent = paused ? 'Resume' : 'Pause'; };
+$$('.seg button').forEach(b => b.onclick = () => { speed = +b.dataset.speed; $$('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+$$('[data-zoom]').forEach(b => b.onclick = () => { prefs.zoom = +b.dataset.zoom; savePrefs(); applyPrefs(); });
+$('#btnContrast').onclick = () => { prefs.contrast = !prefs.contrast; savePrefs(); applyPrefs(); };
+$('#btnVoice').onclick = () => {
+  prefs.voice = !prefs.voice; savePrefs(); applyPrefs();
+  if (prefs.voice) speak(lang === 'ur' ? 'آواز والے الرٹ آن ہو گئے۔' : 'Voice alerts are on.');
+};
+$$('[data-lang]').forEach(b => b.onclick = () => { lang = prefs.lang = b.dataset.lang; savePrefs(); applyPrefs(); S.lastAnn = ''; render(); });
+const tabBtns = $$('#tablist button');
+tabBtns.forEach(b => {
+  b.onclick = () => {
+    activeTab = b.dataset.tab;
+    tabBtns.forEach(x => x.setAttribute('aria-selected', x === b));
+    $$('.tab').forEach(s => s.hidden = s.id !== 'tab-' + activeTab);
+    render();
+  };
+});
+$('#tablist').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const i = tabBtns.indexOf(document.activeElement); if (i < 0) return;
+  const n = tabBtns[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabBtns.length) % tabBtns.length];
+  n.focus(); n.click();
+});
+function drawQR() {
+  const el = $('#qr');
+  try {
+    const url = /^https?:/.test(location.href) ? location.href.split('#')[0] : 'https://queue.example.gov/get-token';
+    const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+    el.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+  } catch (e) { el.innerHTML = '<span style="color:#333;font-size:12px">QR unavailable</span>'; }
+}
+
+
+/* ---------- voice assistant ---------- */
+/* VOICE-PURE-START */
+const DW = {
+  zero:0, oh:0, one:1, won:1, two:2, to:2, too:2, three:3, tree:3, four:4, for:4, five:5, six:6, seven:7, eight:8, ate:8, nine:9,
+  sifar:0, siffar:0, seefar:0, zeero:0, aik:1, ek:1, do:2, teen:3, char:4, chaar:4, chaar:4, panch:5, paanch:5, paanj:5, pach:5,
+  chay:6, che:6, chhe:6, chhay:6, cheh:6, chey:6, saat:7, sat:7, aath:8, ath:8, nau:9, nao:9,
+  'صفر':0, 'زیرو':0, 'ایک':1, 'اک':1, 'ون':1, 'دو':2, 'ٹو':2, 'تین':3, 'تھری':3, 'چار':4, 'فور':4, 'پانچ':5, 'پانج':5, 'فائیو':5,
+  'چھ':6, 'چھے':6, 'چھہ':6, 'سکس':6, 'سات':7, 'سیون':7, 'آٹھ':8, 'اٹھ':8, 'ایٹ':8, 'نو':9, 'نائن':9
+};
+const UR_SAY = { A:'اے', B:'بی', G:'جی', '0':'صفر', '1':'ایک', '2':'دو', '3':'تین', '4':'چار', '5':'پانچ', '6':'چھ', '7':'سات', '8':'آٹھ', '9':'نو' };
+const ROMAN_UR = /\b(mujhe|mujhy|mujhay|mjhe|mera|meri|mere|karna|karni|kerna|chahiye|chahiyea|chaiye|naam|apka|aapka|hai|hy|haan|nahi|lena|lenay|banana|karo|kijiye|kro)\b/i;
+const EN_MARK = /\b(i|my|me|want|need|would|like|please|get|name|is|the|a|to)\b/i;
+
+function extractDigits(text) {
+  const s = String(text).toLowerCase()
+    .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0));
+  let out = '', mult = 1;
+  for (const tk of s.split(/[^0-9a-z\u0600-\u06FF]+/).filter(Boolean)) {
+    if (/^\d+$/.test(tk)) { out += tk.repeat(mult); mult = 1; continue; }
+    if (['double', 'dabal', 'dubal', 'ڈبل'].includes(tk)) { mult = 2; continue; }
+    if (['triple', 'ٹرپل'].includes(tk)) { mult = 3; continue; }
+    if (Object.prototype.hasOwnProperty.call(DW, tk)) { out += String(DW[tk]).repeat(mult); mult = 1; }
+  }
+  return out;
+}
+function extractName(text) {
+  let s = String(text).replace(/[.,!?؟۔]/g, ' ').replace(/\s+/g, ' ').trim();
+  s = s.replace(/^(my name is|my name's|name is|this is|i am|i'm|it's|its)\s+/i, '');
+  s = s.replace(/^(mera naam|mera naam|mera nam|mera name|mai|main|mein|naam)\s+/i, '');
+  s = s.replace(/^(میرا نام|میرا نام|نام|میں)\s+/, '');
+  s = s.replace(/\s+(hai|hy|he|hain|hoon|hun|ہے|ہیں|ہوں)$/i, '').trim().slice(0, 40);
+  if (s.length < 2 || /\d/.test(s)) return '';
+  if (/[A-Za-z]/.test(s)) s = s.split(' ').map(w => w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w).join(' ');
+  return s;
+}
+const wantsToken = text => /token|tokan|toakan|ٹوکن|register|رجسٹر|ticket|ٹکٹ|parchi|پرچی|appointment|booking|\bbook\b/i.test(text);
+function detectLang(text) {
+  if (/[\u0600-\u06FF]/.test(text)) return { lang: 'ur', roman: false };
+  if (ROMAN_UR.test(text)) return { lang: 'ur', roman: true };
+  if (EN_MARK.test(text)) return { lang: 'en', roman: false };
+  return null;
+}
+function waitWords(m, set) {
+  if (m == null || !isFinite(m)) return '';
+  if (m < 1) return set === 'en' ? 'less than a minute' : set === 'ur' ? 'ایک منٹ سے بھی کم' : 'ek minute se bhi kam';
+  m = Math.round(m);
+  const h = Math.floor(m / 60), mm = m % 60;
+  if (set === 'en') return h ? `about ${h} hour${h > 1 ? 's' : ''}${mm ? ' ' + mm + ' minutes' : ''}` : `about ${mm} minutes`;
+  if (set === 'ur') return h ? `${h} گھنٹہ${mm ? ' ' + mm + ' منٹ' : ''}` : `${mm} منٹ`;
+  return h ? `${h} ghanta${mm ? ' ' + mm + ' minute' : ''}` : `${mm} minute`;
+}
+const labelSpoken = (label, set) => label.split('').map(ch => set === 'ur' ? (UR_SAY[ch] || ch) : ch).join(' ');
+const fillTpl = (s, v) => { for (const k in v) s = s.split('{' + k + '}').join(v[k]); return s; };
+/* VOICE-PURE-END */
+
+const VP = {
+  en: {
+    askName: 'Sure. What is your name?', noName: 'Sorry, I did not catch your name. Please say it again.',
+    askPhone: 'Thank you, {n}. What is your mobile number?',
+    badPhone: 'I could not catch a valid mobile number. Please say it again, digit by digit.',
+    typeIt: 'Please type your mobile number in the box below.',
+    noIntent: 'Sorry, I did not understand. Please say, I want to register a token.',
+    done: 'Your token is registered. Your token number is {l}, and you will have to wait {w}.',
+    doneNow: 'Your token is registered. Your token number is {l}. You will be called in less than a minute.',
+    done0: 'Your token is registered. Your token number is {l}. No counter is open right now. Please keep this page open and we will alert you when one opens.'
+  },
+  ur: {
+    askName: 'جی ضرور۔ آپ کا نام کیا ہے؟', noName: 'معذرت، آپ کا نام سمجھ نہیں آیا۔ براہِ کرم دوبارہ بتائیں۔',
+    askPhone: 'شکریہ {n}۔ آپ کا موبائل نمبر کیا ہے؟',
+    badPhone: 'معذرت، درست موبائل نمبر سمجھ نہیں آیا۔ براہِ کرم ایک ایک ہندسہ کر کے دوبارہ بتائیں۔',
+    typeIt: 'براہِ کرم اپنا موبائل نمبر نیچے دیے گئے خانے میں لکھ دیں۔',
+    noIntent: 'معذرت، سمجھ نہیں آیا۔ براہِ کرم کہیں، مجھے ٹوکن رجسٹر کرنا ہے۔',
+    done: 'آپ کا ٹوکن رجسٹر ہو گیا ہے۔ آپ کا ٹوکن نمبر {l} ہے اور آپ کو {w} تک انتظار کرنا پڑے گا۔',
+    doneNow: 'آپ کا ٹوکن رجسٹر ہو گیا ہے۔ آپ کا ٹوکن نمبر {l} ہے اور آپ کو ایک منٹ سے بھی کم میں بلایا جائے گا۔',
+    done0: 'آپ کا ٹوکن رجسٹر ہو گیا ہے۔ آپ کا ٹوکن نمبر {l} ہے۔ ابھی کوئی کاؤنٹر کھلا نہیں، کاؤنٹر کھلتے ہی اس اسکرین پر اطلاع مل جائے گی۔'
+  },
+  rom: {
+    askName: 'Ji zaroor. Aapka naam kya hai?', noName: 'Maazrat, aapka naam samajh nahi aaya. Meherbani karke dobara batayein.',
+    askPhone: 'Shukriya {n}. Aapka mobile number kya hai?',
+    badPhone: 'Maazrat, durust mobile number samajh nahi aaya. Meherbani karke ek ek hindsa karke dobara batayein.',
+    typeIt: 'Meherbani karke apna mobile number neeche diye gaye box mein likh dein.',
+    noIntent: 'Maazrat, samajh nahi aaya. Meherbani karke kahein, mujhe token register karna hai.',
+    done: 'Aapka token register ho gaya hai. Aapka token number {l} hai aur aapko {w} tak wait karna paray ga.',
+    doneNow: 'Aapka token register ho gaya hai. Aapka token number {l} hai aur aapko ek minute se bhi kam mein bulaya jayega.',
+    done0: 'Aapka token register ho gaya hai. Aapka token number {l} hai. Abhi koi counter khula nahi, counter khulte hi is screen par ittela mil jayegi.'
+  }
+};
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const V = { active: false, state: 'idle', lang: 'ur', roman: false, name: '', tries: 0, silent: 0, useMic: true, rec: null, started: 0, session: 0, noted: false };
+try { window.speechSynthesis.getVoices(); } catch (e) {}
+function pickVoice(prefixes) {
+  try {
+    const vs = window.speechSynthesis.getVoices() || [];
+    for (const p of prefixes) { const v = vs.find(v => v.lang.toLowerCase().replace('_', '-').startsWith(p)); if (v) return v; }
+  } catch (e) {}
+  return null;
+}
+function voiceSets() {
+  const disp = V.lang === 'en' ? 'en' : (V.roman ? 'rom' : 'ur');
+  const spoken = (disp === 'ur' && !pickVoice(['ur'])) ? 'rom' : disp;
+  return { disp, spoken };
+}
+function line(key, v = {}) {
+  const { disp, spoken } = voiceSets();
+  const f = (set, sp) => fillTpl(VP[set][key], { n: v.n || '', l: v.label ? (sp ? labelSpoken(v.label, set) : v.label) : '', w: waitWords(v.eta, set) });
+  return { text: f(disp, false), spoken: f(spoken, true), spokenSet: spoken, fallback: disp !== spoken };
+}
+function addBubble(who, text) {
+  const d = document.createElement('div'); d.className = 'vb ' + who; d.dir = 'auto'; d.textContent = text;
+  const box = $('#voChat'); box.appendChild(d); box.scrollTop = box.scrollHeight;
+}
+function setStatus(s) { $('#voStatus').textContent = s || ''; $('#voStop').hidden = !V.active; }
+function micState(on) {
+  $('#micUr').setAttribute('aria-pressed', on && V.lang === 'ur');
+  $('#micEn').setAttribute('aria-pressed', on && V.lang === 'en');
+}
+function say(l) {
+  return new Promise(res => {
+    if (l.fallback && !V.noted) { V.noted = true; addBubble('sys', T('vo_novoice')); }
+    addBubble('bot', l.text);
+    if (!('speechSynthesis' in window)) { res(); return; }
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(l.spoken);
+      const v = l.spokenSet === 'ur' ? pickVoice(['ur']) : pickVoice(['en-in', 'en-pk', 'en-us', 'en']);
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = l.spokenSet === 'ur' ? 'ur-PK' : 'en-IN';
+      u.rate = 0.92;
+      let done = false, tm;
+      const fin = () => { if (done) return; done = true; clearTimeout(tm); setTimeout(res, 150); };
+      u.onend = fin; u.onerror = fin;
+      tm = setTimeout(fin, Math.max(3000, l.spoken.length * 95));
+      setStatus(T('vo_speaking'));
+      speechSynthesis.speak(u);
+    } catch (e) { res(); }
+  });
+}
+function listen(sess) {
+  if (!V.active || sess !== V.session) return;
+  if (!SR || !V.useMic) { setStatus(''); $('#voIn').focus(); return; }
+  const old = V.rec; V.rec = null;
+  try { old && old.abort(); } catch (e) {}
+  const rec = new SR(); V.rec = rec;
+  rec.lang = V.lang === 'ur' ? 'ur-PK' : 'en-US';
+  rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
+  let got = false;
+  rec.onstart = () => { setStatus(T('vo_listening')); micState(true); };
+  rec.onresult = e => {
+    let fin = '', interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) fin += r[0].transcript; else interim += r[0].transcript; }
+    if (interim && !fin) setStatus('… ' + interim);
+    if (fin) { got = true; V.silent = 0; handle(fin.trim(), sess); }
+  };
+  rec.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { V.useMic = false; setStatus(T('vo_blocked')); $('#voIn').focus(); }
+  };
+  rec.onend = () => {
+    if (V.rec !== rec) return;
+    micState(false);
+    if (!got && V.active && sess === V.session && V.useMic) {
+      if (++V.silent <= 1) setTimeout(() => listen(sess), 300);
+      else { setStatus(T('vo_nospeech')); $('#voIn').focus(); }
+    }
+  };
+  try { rec.start(); } catch (e) {}
+}
+async function ask(key, sess, vars) {
+  const l = line(key, vars || {});
+  await say(l);
+  if (sess === V.session) listen(sess);
+}
+async function handle(text, sess) {
+  if (sess !== V.session || !V.active) return;
+  setStatus(''); micState(false);
+  addBubble('me', text);
+  if (V.state === 'idle') {
+    const d = detectLang(text);
+    if (d) { V.lang = d.lang; V.roman = d.roman; }
+    if (!wantsToken(text)) { ask('noIntent', sess); return; }
+    V.state = 'name'; V.started = performance.now();
+    ask('askName', sess);
+  } else if (V.state === 'name') {
+    const nm = extractName(text);
+    if (!nm) { ask('noName', sess); return; }
+    V.name = nm; V.state = 'phone'; V.tries = 0;
+    ask('askPhone', sess, { n: nm });
+  } else if (V.state === 'phone') {
+    const pn = normPhone(extractDigits(text));
+    if (pn) { finish(pn, sess); return; }
+    V.tries++;
+    if (V.tries >= 3) {
+      V.useMic = false;
+      const l = line('typeIt'); await say(l); $('#voIn').focus(); setStatus('');
+    } else ask('badPhone', sess);
+  }
+}
+async function finish(pn, sess) {
+  let t;
+  muteSpeech = true;
+  try { t = registerToken({ name: V.name, pn, priority: false, notifyAhead: 3, alertMin: 15, trackTime: false }); }
+  finally { muteSpeech = false; }
+  usab.voice.push((performance.now() - V.started) / 1000);
+  V.state = 'idle';
+  const l = line(t.estAtIssue == null ? 'done0' : t.estAtIssue < 1 ? 'doneNow' : 'done', { n: V.name, label: t.label, eta: t.estAtIssue });
+  addBubble('sys', `✓ ${t.label} · ${V.name} · +${pn}`);
+  await say(l);
+  if (sess === V.session) endVoice();
+}
+function endVoice() { V.active = false; V.rec = null; micState(false); setStatus(''); }
+function stopVoice() {
+  V.session++; const r = V.rec; V.rec = null;
+  try { r && r.abort(); } catch (e) {}
+  try { window.speechSynthesis.cancel(); } catch (e) {}
+  endVoice();
+}
+function startVoice(l) {
+  if (V.active && V.state !== 'idle') { V.lang = l; V.useMic = true; V.silent = 0; listen(V.session); return; }
+  stopVoice();
+  V.session++;
+  Object.assign(V, { active: true, state: 'idle', lang: l, roman: false, name: '', tries: 0, silent: 0, useMic: true, noted: false });
+  $('#voChat').innerHTML = '';
+  if (!SR) { V.useMic = false; setStatus(T('vo_unsupported')); addBubble('sys', T('vo_unsupported')); $('#voIn').focus(); return; }
+  listen(V.session);
+}
+function submitTyped() {
+  const v = $('#voIn').value.trim(); if (!v) return;
+  $('#voIn').value = '';
+  if (!V.active) {
+    V.session++;
+    Object.assign(V, { active: true, state: 'idle', lang: lang, roman: false, name: '', tries: 0, silent: 0, useMic: false, noted: false });
+    $('#voChat').innerHTML = '';
+  } else {
+    V.useMic = false; const r = V.rec; V.rec = null;
+    try { r && r.abort(); } catch (e) {}
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+  }
+  handle(v, V.session);
+}
+$('#micUr').onclick = () => startVoice('ur');
+$('#micEn').onclick = () => startVoice('en');
+$('#voStop').onclick = stopVoice;
+$('#voSend').onclick = submitTyped;
+$('#voIn').addEventListener('keydown', e => { if (e.key === 'Enter') submitTyped(); });
+
+init('hospital'); applyPrefs(); drawQR(); render();
+setInterval(() => {
+  if (paused) return;
+  let left = speed * 0.2;
+  while (left > 0) { const h = Math.min(0.2, left); step(h); left -= h; }
+  render();
+}, 200);
+})();
+</script>
+</body>
+</html>
